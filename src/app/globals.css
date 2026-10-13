@@ -1,0 +1,16 @@
+:root {
+  --blu-grigio: #8d9ba4;
+  --sand: #d9ccc2;
+  --navy: #424953;
+  --off-white: #f4f5f0;
+  /* Font dei titoli (Cormorant Garamond via next/font in layout.tsx). */
+  --font-serif: "Cormorant Garamond", Georgia, serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  font-family: 'Inter', sans-serif;
+}
+body {
+  background: var(--off-white);
+  color: var(--navy);
+}

@@ -1,0 +1,29 @@
+{
+  "name": "abitare-investor-club",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "start": "prisma migrate deploy && next start",
+    "db:impostazioni": "node --env-file=.env prisma/impostazioni-iniziali.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "~6.19.3",
+    "next": "15.5.19",
+    "pg": "^8.13.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "prisma": "~6.19.3",
+    "typescript": "^5.7.2"
+  }
+}

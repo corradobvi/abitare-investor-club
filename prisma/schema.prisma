@@ -1,0 +1,84 @@
+// AbitaRE Investor Club — schema
+// Principi (stessi del CRM):
+// - Tutte le tabelle hanno prefisso Club: all'integrazione si trasferiscono nel
+//   database del CRM con migrazioni solo additive.
+// - Niente enum Prisma: campi String con i valori canonici elencati nel commento.
+// - clienteId / *UserId = id (cuid, String) di Cliente / User nel CRM. Nessuna
+//   foreign key: oggi le tabelle del CRM stanno in un altro database.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CLUB_DATABASE_URL")
+}
+
+// Profilo d'investimento del cliente: una riga per cliente del CRM.
+model ClubProfiloInvestitore {
+  id        String @id @default(cuid())
+  clienteId String @unique
+
+  obiettivo             String? // flipping | rendita | entrambi
+  capitale              String? // 0-50k | 50-100k | 100-150k | 150-200k | 200-300k | 300-500k | oltre-500k
+  rendimentoFlipping    String? // fino-12 | 12-18 | 18-25 | oltre-25
+  rendimentoRendita     String? // 3-5 | 5-7 | 7-9 | oltre-9
+  finanziamento         String? // necessario | possibile | non-necessario
+  orizzonte             String? // meno-12-mesi | 1-3-anni | 3-5-anni | oltre-5-anni
+  area                  String? // italia | estero | entrambi
+  formulaFlipping       String? // intera | quota | indifferente
+  tipoRendita           String? // lungo-periodo | breve-periodo | indifferente
+  coinvolgimento        String? // passivo | attivo
+  esperienza            String? // nessuna | qualche-operazione | abituale
+  disponibilitaCapitale String? // subito | entro-3-mesi | entro-6-mesi | oltre
+  contattoPreferito     String? // whatsapp | telefono | email
+  interesseGoldenVisa   Boolean?
+
+  // CONSENSI: il booleano e la data in cui e' stato dato.
+  consensoProfilazione     Boolean   @default(false)
+  consensoProfilazioneIl   DateTime?
+  consensoComunicazioni    Boolean   @default(false)
+  consensoComunicazioniIl  DateTime?
+
+  completatoIl         DateTime?
+  ultimaModificaDa     String? // consulente | cliente
+  ultimaModificaUserId String? // id User del CRM, se ha modificato un consulente
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Link personale che il consulente manda al cliente per compilare il profilo.
+model ClubLinkInvito {
+  id              String    @id @default(cuid())
+  token           String    @unique // casuale, sicuro, almeno 32 caratteri
+  clienteId       String
+  creatoDaUserId  String
+  creatoIl        DateTime  @default(now())
+  revocatoIl      DateTime?
+  ultimoAccessoIl DateTime?
+  accessiTotali   Int       @default(0)
+
+  @@index([clienteId])
+}
+
+// Diario degli eventi del Club, per cliente.
+model ClubEvento {
+  id        String   @id @default(cuid())
+  clienteId String
+  tipo      String // link-creato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente
+  dati      Json?
+  creatoIl  DateTime @default(now())
+
+  @@index([clienteId])
+  @@index([creatoIl])
+}
+
+// Impostazioni e feature flag (chiave/valore, chiavi in italiano camelCase).
+model ClubImpostazione {
+  id           String   @id @default(cuid())
+  chiave       String   @unique
+  valore       String
+  aggiornatoIl DateTime @updatedAt
+}

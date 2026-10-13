@@ -99,9 +99,10 @@ export default async function VerificaPage() {
         {
           etichetta: "Con consulente assegnato non più attivo",
           valore: conta((c) => !!c.assegnatoId && c.consulenteAttivo === false),
+          nota: "passano al referente default",
         },
         {
-          etichetta: "Avranno come referente il default",
+          etichetta: "Avranno come referente il default (senza consulente o consulente non attivo)",
           valore: referenti.filter((r) => r.origine === "default").length,
           nota: impostazioni.referenteDefaultUserId ? "referente default impostato" : "ATTENZIONE: referente default NON impostato",
         },

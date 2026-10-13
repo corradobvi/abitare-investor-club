@@ -106,13 +106,16 @@ export type Referente = {
   origine: "assegnato" | "default";
 };
 
-// Referente del cliente nel Club: il consulente assegnato se c'e', altrimenti
+// Referente del cliente nel Club: il consulente assegnato se c'e' ed e'
+// attivo, altrimenti (nessun consulente, oppure consulente disattivato)
 // l'utente indicato in referenteDefaultUserId.
 export async function referentePerCliente(
-  cliente: Pick<ClienteInvestitore, "assegnatoId">,
+  cliente: Pick<ClienteInvestitore, "assegnatoId" | "consulenteAttivo">,
   impostazioni?: Impostazioni,
 ): Promise<Referente> {
-  if (cliente.assegnatoId) return { userId: cliente.assegnatoId, origine: "assegnato" };
+  if (cliente.assegnatoId && cliente.consulenteAttivo !== false) {
+    return { userId: cliente.assegnatoId, origine: "assegnato" };
+  }
   const imp = impostazioni ?? (await leggiImpostazioni());
   return { userId: imp.referenteDefaultUserId, origine: "default" };
 }

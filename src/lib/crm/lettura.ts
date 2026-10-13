@@ -119,3 +119,41 @@ export async function referentePerCliente(
   const imp = impostazioni ?? (await leggiImpostazioni());
   return { userId: imp.referenteDefaultUserId, origine: "default" };
 }
+
+export type UtenteCrm = {
+  id: string;
+  email: string;
+  name: string;
+  role: string; // chiave di User.role: etichetta con ROLE_LABELS
+  active: boolean;
+};
+
+// Solo per il login: utente CRM con l'hash della password, cercato per email
+// (senza distinzione maiuscole). L'hash non esce mai da src/lib/auth.ts.
+export async function utentePerLogin(
+  email: string,
+): Promise<(UtenteCrm & { passwordHash: string }) | null> {
+  return inSolaLettura(async (c) => {
+    const r = await c.query<UtenteCrm & { passwordHash: string }>(
+      `SELECT id, email, name, role, active, "passwordHash"
+         FROM "User" WHERE lower(email) = lower($1) LIMIT 2`,
+      [email.trim()],
+    );
+    return r.rowCount === 1 ? r.rows[0] : null;
+  });
+}
+
+// Utenti CRM per id (senza hash): nome del referente, ricontrollo della
+// sessione (utente ancora attivo, ruolo attuale).
+export async function utentiPerId(ids: string[]): Promise<Map<string, UtenteCrm>> {
+  const unici = [...new Set(ids.filter(Boolean))];
+  if (unici.length === 0) return new Map();
+  const righe = await inSolaLettura(async (c) => {
+    const r = await c.query<UtenteCrm>(
+      `SELECT id, email, name, role, active FROM "User" WHERE id = ANY($1::text[])`,
+      [unici],
+    );
+    return r.rows;
+  });
+  return new Map(righe.map((u) => [u.id, u]));
+}

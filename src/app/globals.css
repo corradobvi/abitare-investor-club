@@ -14,3 +14,58 @@ body {
   background: var(--off-white);
   color: var(--navy);
 }
+
+/* Area interna del Club: stile sobrio, leggibile anche da telefono. */
+a { color: inherit; }
+.contenitore { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
+.riquadro { background: #fff; border: 1px solid var(--sand); border-radius: 12px; padding: 20px; }
+.titolo { font-family: var(--font-serif); font-weight: 600; }
+.tenue { color: var(--blu-grigio); }
+.pulsante {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 9px 16px; border-radius: 8px; border: 1px solid var(--navy);
+  background: var(--navy); color: #fff; font: inherit; font-size: 14px; font-weight: 500;
+  cursor: pointer; text-decoration: none; white-space: nowrap;
+}
+.pulsante:disabled { opacity: .55; cursor: default; }
+.pulsante.secondario { background: #fff; color: var(--navy); }
+.pulsante.leggero { background: var(--off-white); color: var(--navy); border-color: var(--sand); }
+.campo {
+  width: 100%; padding: 9px 10px; border: 1px solid var(--sand); border-radius: 8px;
+  font: inherit; font-size: 14px; background: #fff; color: var(--navy);
+}
+.etichetta { display: block; font-size: 12px; color: var(--blu-grigio); margin-bottom: 4px; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600;
+  background: var(--off-white); color: var(--navy); border: 1px solid var(--sand); white-space: nowrap;
+}
+.badge.sabbia { background: var(--sand); border-color: var(--sand); }
+.badge.allerta { background: #fbeee4; border-color: #e7c3a6; color: #8a4b1f; }
+.badge.ok { background: #e9efe9; border-color: #c4d3c4; color: #3d5a3d; }
+.barra { height: 6px; background: var(--off-white); border-radius: 999px; overflow: hidden; min-width: 70px; }
+.barra > span { display: block; height: 100%; background: var(--blu-grigio); }
+.barra.piena > span { background: var(--navy); }
+.scorri { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.tabella { width: 100%; border-collapse: collapse; font-size: 14px; }
+.tabella th {
+  text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--blu-grigio); font-weight: 600; padding: 10px 10px; border-bottom: 1px solid var(--sand);
+  white-space: nowrap;
+}
+.tabella td { padding: 10px 10px; border-bottom: 1px solid var(--off-white); vertical-align: middle; }
+.tabella tbody tr:hover { background: #fafaf7; }
+.griglia-filtri { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.griglia-sintesi { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.griglia-dati { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 24px; }
+.scheda-colonne { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 860px) { .scheda-colonne { grid-template-columns: minmax(0, 1fr); } }
+.opzioni { display: flex; flex-wrap: wrap; gap: 8px; }
+.opzione {
+  padding: 8px 12px; border-radius: 8px; border: 1px solid var(--sand); background: #fff;
+  font: inherit; font-size: 14px; color: var(--navy); cursor: pointer; text-align: left;
+}
+.opzione.scelta { background: var(--navy); border-color: var(--navy); color: #fff; }
+.velo {
+  position: fixed; inset: 0; background: rgba(66, 73, 83, .45); display: grid; place-items: center;
+  padding: 16px; z-index: 50;
+}

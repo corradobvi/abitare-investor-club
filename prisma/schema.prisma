@@ -67,7 +67,7 @@ model ClubLinkInvito {
 model ClubEvento {
   id        String   @id @default(cuid())
   clienteId String
-  tipo      String // link-creato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente
+  tipo      String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente
   dati      Json?
   creatoIl  DateTime @default(now())
 

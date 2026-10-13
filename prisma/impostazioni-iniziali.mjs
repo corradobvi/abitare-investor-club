@@ -44,6 +44,8 @@ async function main() {
       criterioLinea: "Investimenti",
       referenteDefaultUserId: await idReferenteDefault(),
       portaleClienteAttivo: "false",
+      // Indirizzo pubblico del portale: base dei link d'invito (/c/<token>).
+      urlPubblicoPortale: "http://localhost:3000",
     };
     for (const [chiave, valore] of Object.entries(iniziali)) {
       const esistente = await prisma.clubImpostazione.findUnique({ where: { chiave } });

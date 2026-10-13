@@ -9,6 +9,7 @@ export const CHIAVI_IMPOSTAZIONI = [
   "criterioLinea",
   "referenteDefaultUserId",
   "portaleClienteAttivo",
+  "urlPubblicoPortale",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];

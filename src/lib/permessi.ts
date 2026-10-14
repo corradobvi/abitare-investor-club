@@ -4,7 +4,7 @@
 // - Consulente: solo i clienti di cui e' referente (referentePerCliente).
 // - Agente, AgenteSenior, UfficioTecnico, Socio (e ruoli sconosciuti):
 //   accesso non previsto.
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { utenteSessione } from "@/lib/auth";
 import {
   referentePerCliente,
@@ -61,4 +61,28 @@ export async function investitoriVisibili<T extends Pick<ClienteInvestitore, "as
 ): Promise<T[]> {
   const visibili = await Promise.all(investitori.map((c) => puoVedereCliente(utente, c, impostazioni)));
   return investitori.filter((_, i) => visibili[i]);
+}
+
+// Pagina /impostazioni e sue azioni: solo Admin.
+export function puoGestireImpostazioni(ruolo: string): boolean {
+  return ruolo === "Admin";
+}
+
+// Utente Admin per /impostazioni: gli altri ruoli ricevono "pagina non trovata".
+export async function utenteImpostazioni(): Promise<UtenteClub> {
+  const utente = await utenteConAccesso();
+  if (!puoGestireImpostazioni(utente.ruolo)) notFound();
+  return utente;
+}
+
+// Referente di un nuovo investitore: Admin e BackOffice lo scelgono tra gli
+// utenti CRM attivi; Consulente e ConsulenteSenior sono sempre referenti di
+// cio' che creano (e non possono cambiarlo).
+export function puoScegliereReferente(ruolo: string): boolean {
+  return ruolo === "Admin" || ruolo === "BackOffice";
+}
+
+// Utenti che possono fare da referente: attivi e con accesso al Club.
+export function puoEssereReferente(utente: { role: string; active: boolean }): boolean {
+  return utente.active && visibilitaPerRuolo(utente.role) !== "nessuno";
 }

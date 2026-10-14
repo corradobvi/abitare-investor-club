@@ -5,6 +5,10 @@
 // - Niente enum Prisma: campi String con i valori canonici elencati nel commento.
 // - clienteId / *UserId = id (cuid, String) di Cliente / User nel CRM. Nessuna
 //   foreign key: oggi le tabelle del CRM stanno in un altro database.
+// - Riferimento all'investitore (profilo, link, eventi): clienteId per i
+//   clienti del CRM, contattoNuovoId per i nuovi investitori della lista
+//   temporanea (ClubContattoNuovo). In profilo e link esattamente uno dei due
+//   e' valorizzato (vincolo CHECK scritto nella migrazione).
 
 generator client {
   provider = "prisma-client-js"
@@ -15,17 +19,22 @@ datasource db {
   url      = env("CLUB_DATABASE_URL")
 }
 
-// Profilo d'investimento del cliente: una riga per cliente del CRM.
+// Profilo d'investimento: una riga per investitore.
 model ClubProfiloInvestitore {
-  id        String @id @default(cuid())
-  clienteId String @unique
+  id              String  @id @default(cuid())
+  clienteId       String? @unique
+  contattoNuovoId String? @unique
 
   obiettivo             String? // flipping | rendita | entrambi
   capitale              String? // 0-50k | 50-100k | 100-150k | 150-200k | 200-300k | 300-500k | oltre-500k
   rendimentoFlipping    String? // fino-12 | 12-18 | 18-25 | oltre-25
   rendimentoRendita     String? // 3-5 | 5-7 | 7-9 | oltre-9
   finanziamento         String? // necessario | possibile | non-necessario
+  // DISMESSO: non piu' mostrato ne' contato, resta solo come storico.
+  // Sostituito da orizzonteFlipping / orizzonteRendita.
   orizzonte             String? // meno-12-mesi | 1-3-anni | 3-5-anni | oltre-5-anni
+  orizzonteFlipping     String? // meno-12-mesi | fino-18-mesi | fino-24-mesi | oltre-24-mesi
+  orizzonteRendita      String? // 1-3-anni | 3-5-anni | oltre-5-anni
   area                  String? // italia | estero | entrambi
   formulaFlipping       String? // intera | quota | indifferente
   tipoRendita           String? // lungo-periodo | breve-periodo | indifferente
@@ -53,7 +62,8 @@ model ClubProfiloInvestitore {
 model ClubLinkInvito {
   id              String    @id @default(cuid())
   token           String    @unique // casuale, sicuro, almeno 32 caratteri
-  clienteId       String
+  clienteId       String?
+  contattoNuovoId String?
   creatoDaUserId  String
   creatoIl        DateTime  @default(now())
   revocatoIl      DateTime?
@@ -61,17 +71,21 @@ model ClubLinkInvito {
   accessiTotali   Int       @default(0)
 
   @@index([clienteId])
+  @@index([contattoNuovoId])
 }
 
-// Diario degli eventi del Club, per cliente.
+// Diario degli eventi del Club, per investitore. Gli eventi generali
+// (impostazione-modificata) non hanno ne' clienteId ne' contattoNuovoId.
 model ClubEvento {
-  id        String   @id @default(cuid())
-  clienteId String
-  tipo      String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente
-  dati      Json?
-  creatoIl  DateTime @default(now())
+  id              String   @id @default(cuid())
+  clienteId       String?
+  contattoNuovoId String?
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | impostazione-modificata
+  dati            Json?
+  creatoIl        DateTime @default(now())
 
   @@index([clienteId])
+  @@index([contattoNuovoId])
   @@index([creatoIl])
 }
 
@@ -81,4 +95,28 @@ model ClubImpostazione {
   chiave       String   @unique
   valore       String
   aggiornatoIl DateTime @updatedAt
+}
+
+// Nuovi investitori inseriti dal Club e non ancora presenti nel CRM (lista
+// temporanea, modalitaNuoviInvestitori = "lista-temporanea"). Contiene cio'
+// che serve per creare il Cliente nel CRM (fonte "Investor Club", ruolo
+// "Investitore") al primo collegamento in scrittura: crmClienteId e
+// importatoIl si compilano in quel momento.
+model ClubContattoNuovo {
+  id              String    @id @default(cuid())
+  nome            String
+  cognome         String
+  cellulare       String // salvato con cellulareDaSalvare (src/lib/telefono.ts)
+  email           String?
+  note            String?
+  referenteUserId String // id User del CRM
+  creatoDaUserId  String // id User del CRM
+  stato           String    @default("confermato") // da-confermare | confermato | importato
+  crmClienteId    String?
+  importatoIl     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([cellulare])
+  @@index([referenteUserId])
 }

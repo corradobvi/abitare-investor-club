@@ -46,6 +46,13 @@ async function main() {
       portaleClienteAttivo: "false",
       // Indirizzo pubblico del portale: base dei link d'invito (/c/<token>).
       urlPubblicoPortale: "http://localhost:3000",
+      // Messaggio WhatsApp d'invito con i segnaposto {nome} e {link}.
+      // Uguale a MESSAGGIO_INVITO_PREDEFINITO in src/lib/messaggio-invito.ts.
+      messaggioInvitoWhatsApp:
+        "Ciao {nome}, ti invito nell'AbitaRE Investor Club, l'area riservata in cui selezioniamo per te " +
+        "le operazioni di investimento più adatte. Completa il tuo profilo in pochi minuti qui: {link}",
+      // Nuovi investitori creati dal Club: lista-temporanea | crm-diretto (futuro).
+      modalitaNuoviInvestitori: "lista-temporanea",
     };
     for (const [chiave, valore] of Object.entries(iniziali)) {
       const esistente = await prisma.clubImpostazione.findUnique({ where: { chiave } });

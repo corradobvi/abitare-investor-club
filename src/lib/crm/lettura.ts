@@ -6,6 +6,7 @@
 // BEGIN TRANSACTION READ ONLY e si chiude sempre con ROLLBACK: solo SELECT.
 import { Pool, type PoolClient } from "pg";
 import { leggiImpostazioni, type Impostazioni } from "@/lib/impostazioni";
+import { normalizzaTelefono } from "@/lib/telefono";
 
 const globalForCrm = globalThis as unknown as { crmPool?: Pool };
 
@@ -62,9 +63,23 @@ type RigaInvestitore = Omit<ClienteInvestitore, "criteri"> & {
   perLinea: boolean;
 };
 
-// Clienti investitori: ruolo cliente = criterioRuoli (senza distinzione
-// maiuscole) OPPURE tag = criterioTag (senza distinzione maiuscole) OPPURE
-// linea = criterioLinea. Le schede di prova sono escluse.
+// Criteri d'ingresso tra gli investitori: ruolo cliente = criterioRuoli
+// (senza distinzione maiuscole) OPPURE tag = criterioTag (senza distinzione
+// maiuscole) OPPURE linea = criterioLinea. Colonne per una SELECT su
+// "Cliente" c, con i parametri $1, $2, $3 di parametriCriteri. Unica regola
+// per elencoInvestitori e clientiPerContatto.
+const COLONNE_CRITERI = `
+  EXISTS (SELECT 1 FROM "ClienteRuolo" r
+           WHERE r."clienteId" = c.id AND lower(r.ruolo) = lower($1)) AS "perRuolo",
+  EXISTS (SELECT 1 FROM "ClienteTag" ct JOIN "Tag" t ON t.id = ct."tagId"
+           WHERE ct."clienteId" = c.id AND lower(t.nome) = lower($2)) AS "perTag",
+  (c.linea = $3) AS "perLinea"`;
+
+function parametriCriteri(imp: Impostazioni): string[] {
+  return [imp.criterioRuoli ?? "", imp.criterioTag ?? "", imp.criterioLinea ?? ""];
+}
+
+// Clienti investitori secondo i criteri d'ingresso. Le schede di prova sono escluse.
 export async function elencoInvestitori(
   impostazioni?: Impostazioni,
 ): Promise<ClienteInvestitore[]> {
@@ -76,18 +91,14 @@ export async function elencoInvestitori(
                 c.linea, c.mutuo, c.privacy, c.mailing, c."assegnatoId",
                 u.name AS "consulenteNome", u.role AS "consulenteRuolo",
                 u.active AS "consulenteAttivo",
-                EXISTS (SELECT 1 FROM "ClienteRuolo" r
-                         WHERE r."clienteId" = c.id AND lower(r.ruolo) = lower($1)) AS "perRuolo",
-                EXISTS (SELECT 1 FROM "ClienteTag" ct JOIN "Tag" t ON t.id = ct."tagId"
-                         WHERE ct."clienteId" = c.id AND lower(t.nome) = lower($2)) AS "perTag",
-                (c.linea = $3) AS "perLinea"
+                ${COLONNE_CRITERI}
            FROM "Cliente" c
            LEFT JOIN "User" u ON u.id = c."assegnatoId"
           WHERE NOT c."schedaDiProva"
        ) x
        WHERE "perRuolo" OR "perTag" OR "perLinea"
        ORDER BY cognome NULLS LAST, nome NULLS LAST, id`,
-      [imp.criterioRuoli ?? "", imp.criterioTag ?? "", imp.criterioLinea ?? ""],
+      parametriCriteri(imp),
     );
     return r.rows;
   });
@@ -99,6 +110,61 @@ export async function elencoInvestitori(
       ...(perLinea ? (["linea"] as const) : []),
     ],
   }));
+}
+
+export type ClienteTrovato = {
+  id: string;
+  assegnatoId: string | null;
+  consulenteAttivo: boolean | null;
+  investitore: boolean; // rispetta i criteri d'ingresso e non e' una scheda di prova
+};
+
+// Controllo doppioni: clienti del CRM con lo stesso cellulare (confronto con
+// normalizzaTelefono, ultime 10 cifre: formati con/senza 39, spazi, + e 00
+// combaciano) oppure la stessa email (senza distinzione maiuscole). Comprese
+// le schede di prova, che pero' non contano come investitori.
+export async function clientiPerContatto(
+  contatto: { cellulare: string | null; email: string | null },
+  impostazioni?: Impostazioni,
+): Promise<ClienteTrovato[]> {
+  const imp = impostazioni ?? (await leggiImpostazioni());
+  const tel = normalizzaTelefono(contatto.cellulare);
+  const email = (contatto.email ?? "").trim().toLowerCase();
+  if (tel.length < 8 && !email) return [];
+  const righe = await inSolaLettura(async (c) => {
+    const r = await c.query<{
+      id: string;
+      cellulare: string | null;
+      email: string | null;
+      assegnatoId: string | null;
+      consulenteAttivo: boolean | null;
+      schedaDiProva: boolean;
+      perRuolo: boolean;
+      perTag: boolean;
+      perLinea: boolean;
+    }>(
+      `SELECT c.id, c.cellulare, c.email, c."assegnatoId", u.active AS "consulenteAttivo",
+              c."schedaDiProva", ${COLONNE_CRITERI}
+         FROM "Cliente" c
+         LEFT JOIN "User" u ON u.id = c."assegnatoId"
+        WHERE (length($4) >= 8 AND right(regexp_replace(coalesce(c.cellulare, ''), '[^0-9]', '', 'g'), 10) = $4)
+           OR ($5 <> '' AND lower(trim(c.email)) = $5)`,
+      [...parametriCriteri(imp), tel, email],
+    );
+    return r.rows;
+  });
+  return righe
+    .filter(
+      (r) =>
+        (tel.length >= 8 && normalizzaTelefono(r.cellulare) === tel) ||
+        (!!email && (r.email ?? "").trim().toLowerCase() === email),
+    )
+    .map((r) => ({
+      id: r.id,
+      assegnatoId: r.assegnatoId,
+      consulenteAttivo: r.consulenteAttivo,
+      investitore: !r.schedaDiProva && (r.perRuolo || r.perTag || r.perLinea),
+    }));
 }
 
 export type Referente = {
@@ -156,4 +222,14 @@ export async function utentiPerId(ids: string[]): Promise<Map<string, UtenteCrm>
     return r.rows;
   });
   return new Map(righe.map((u) => [u.id, u]));
+}
+
+// Utenti CRM attivi (senza hash), per nome: menu del referente.
+export async function utentiAttivi(): Promise<UtenteCrm[]> {
+  return inSolaLettura(async (c) => {
+    const r = await c.query<UtenteCrm>(
+      `SELECT id, email, name, role, active FROM "User" WHERE active ORDER BY name, id`,
+    );
+    return r.rows;
+  });
 }

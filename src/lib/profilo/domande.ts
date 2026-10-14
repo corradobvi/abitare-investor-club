@@ -11,7 +11,8 @@ export type ChiaveDomanda =
   | "rendimentoFlipping"
   | "rendimentoRendita"
   | "finanziamento"
-  | "orizzonte"
+  | "orizzonteFlipping"
+  | "orizzonteRendita"
   | "area"
   | "interesseGoldenVisa"
   | "formulaFlipping"
@@ -110,14 +111,28 @@ export const DOMANDE: Domanda[] = [
     ],
   },
   {
-    chiave: "orizzonte",
-    testo: "In quanto tempo vorresti rientrare dell'investimento?",
+    // Il vecchio campo "orizzonte" (unica tempistica) resta nel database ma
+    // non e' piu' una domanda: non si mostra e non conta per la completezza.
+    chiave: "orizzonteFlipping",
+    testo: "In quanto tempo vorresti concludere un'operazione di flipping?",
     tipo: "scelta",
+    applicabile: conFlipping,
     opzioni: [
-      { valore: "meno-12-mesi", etichetta: "meno di 12 mesi" },
-      { valore: "1-3-anni", etichetta: "da 1 a 3 anni" },
-      { valore: "3-5-anni", etichetta: "da 3 a 5 anni" },
-      { valore: "oltre-5-anni", etichetta: "oltre 5 anni" },
+      { valore: "meno-12-mesi", etichetta: "Meno di 12 mesi" },
+      { valore: "fino-18-mesi", etichetta: "Fino a 18 mesi" },
+      { valore: "fino-24-mesi", etichetta: "Fino a 24 mesi" },
+      { valore: "oltre-24-mesi", etichetta: "Oltre 2 anni" },
+    ],
+  },
+  {
+    chiave: "orizzonteRendita",
+    testo: "Per quanto tempo pensi di mantenere un investimento a rendita?",
+    tipo: "scelta",
+    applicabile: conRendita,
+    opzioni: [
+      { valore: "1-3-anni", etichetta: "Da 1 a 3 anni" },
+      { valore: "3-5-anni", etichetta: "Da 3 a 5 anni" },
+      { valore: "oltre-5-anni", etichetta: "Oltre 5 anni" },
     ],
   },
   {

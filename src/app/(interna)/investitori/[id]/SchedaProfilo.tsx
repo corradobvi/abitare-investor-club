@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   DOMANDE,
   DOMANDE_PER_CHIAVE,
@@ -22,7 +22,7 @@ type Consensi = {
 };
 
 type Props = {
-  clienteId: string;
+  chiave: string; // id cliente CRM oppure "n_" + id del nuovo investitore
   nome: string;
   mutuoNelCrm: boolean;
   risposteIniziali: Risposte;
@@ -35,10 +35,18 @@ function scorriA(id: string) {
 }
 
 export default function SchedaProfilo(props: Props) {
-  const { clienteId, nome, mutuoNelCrm, consensi } = props;
+  const { chiave, nome, mutuoNelCrm, consensi } = props;
   const [risposte, setRisposte] = useState<Risposte>(props.risposteIniziali);
   const [salvate, setSalvate] = useState<Risposte>(props.risposteIniziali);
   const [invito, setInvito] = useState<InvitoMostrato | null>(props.invitoIniziale);
+  // Se cambiano nome o cellulare (dati di un nuovo investitore salvati in
+  // intestazione) la pagina si aggiorna: il link WhatsApp dello stesso invito
+  // segue i nuovi dati.
+  const urlAggiornato = props.invitoIniziale?.url;
+  const whatsappAggiornato = props.invitoIniziale?.whatsapp ?? null;
+  useEffect(() => {
+    setInvito((i) => (i && i.url === urlAggiornato ? { ...i, whatsapp: whatsappAggiornato } : i));
+  }, [urlAggiornato, whatsappAggiornato]);
   // Avviso a comparsa all'apertura di un profilo incompleto: solo all'apertura,
   // non si riapre quando la pagina si aggiorna dopo un salvataggio o un invito.
   const [popupAperto, setPopupAperto] = useState(() => !completezzaProfilo(props.risposteIniziali).completo);
@@ -67,7 +75,7 @@ export default function SchedaProfilo(props: Props) {
       const pulite = senzaNonApplicabili(risposte);
       const inviate: Record<string, unknown> = {};
       for (const d of DOMANDE) if (d.tipo !== "consenso") inviate[d.chiave] = pulite[d.chiave] ?? null;
-      const esito = await salvaProfilo(clienteId, inviate).catch(() => null);
+      const esito = await salvaProfilo(chiave, inviate).catch(() => null);
       if (!esito || !esito.ok) {
         setMessaggio({ tipo: "errore", testo: esito && !esito.ok ? esito.errore : "Salvataggio non riuscito. Riprova." });
         return;
@@ -81,7 +89,7 @@ export default function SchedaProfilo(props: Props) {
   function invita() {
     setMessaggioInvito("");
     avviaInvito(async () => {
-      const esito = await invitaAlClub(clienteId).catch(() => null);
+      const esito = await invitaAlClub(chiave).catch(() => null);
       if (!esito || !esito.ok || !esito.dati) {
         setMessaggioInvito(esito && !esito.ok ? esito.errore : "Creazione del link non riuscita. Riprova.");
         return;
@@ -94,7 +102,7 @@ export default function SchedaProfilo(props: Props) {
     if (!window.confirm(`Revocare il link di ${nome}? Il link smetterà di funzionare subito.`)) return;
     setMessaggioInvito("");
     avviaInvito(async () => {
-      const esito = await revocaLink(clienteId).catch(() => null);
+      const esito = await revocaLink(chiave).catch(() => null);
       if (!esito || !esito.ok) {
         setMessaggioInvito(esito && !esito.ok ? esito.errore : "Revoca non riuscita. Riprova.");
         return;
@@ -227,7 +235,7 @@ export default function SchedaProfilo(props: Props) {
               {invito.whatsapp ? (
                 <a className="pulsante" href={invito.whatsapp} target="_blank" rel="noopener noreferrer">Apri WhatsApp</a>
               ) : (
-                <span className="tenue" style={{ fontSize: 12, alignSelf: "center" }}>Nel CRM manca il cellulare: niente WhatsApp.</span>
+                <span className="tenue" style={{ fontSize: 12, alignSelf: "center" }}>Manca il cellulare: niente WhatsApp.</span>
               )}
               <button type="button" className="pulsante leggero" onClick={revoca} disabled={operazioneInvito}>Revoca link</button>
             </div>

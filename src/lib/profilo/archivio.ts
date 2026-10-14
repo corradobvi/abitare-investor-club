@@ -1,6 +1,7 @@
 // Lettura e salvataggio del profilo nel database del Club (ClubProfiloInvestitore).
 import type { ClubProfiloInvestitore } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { chiaveDiRiga, filtroPerRif, type Rif } from "@/lib/riferimento";
 import {
   DOMANDE,
   rispostaValida,
@@ -17,9 +18,11 @@ export function rispostePerProfilo(p: ClubProfiloInvestitore | null | undefined)
   return r;
 }
 
-export async function profiliPerClienti(clienteIds: string[]): Promise<Map<string, ClubProfiloInvestitore>> {
-  const righe = await prisma.clubProfiloInvestitore.findMany({ where: { clienteId: { in: clienteIds } } });
-  return new Map(righe.map((p) => [p.clienteId, p]));
+// Profili per chiave dell'investitore (vedi src/lib/riferimento.ts).
+export async function profiliPerRif(rifs: Rif[]): Promise<Map<string, ClubProfiloInvestitore>> {
+  if (rifs.length === 0) return new Map();
+  const righe = await prisma.clubProfiloInvestitore.findMany({ where: filtroPerRif(rifs) });
+  return new Map(righe.map((p) => [chiaveDiRiga(p), p]));
 }
 
 export class RispostaNonValida extends Error {}
@@ -29,11 +32,11 @@ export class RispostaNonValida extends Error {}
 // piu' applicabili si azzerano. Registra "profilo-modificato-consulente" e,
 // se il profilo e' appena diventato completo, "profilo-completato".
 export async function salvaProfiloDaConsulente(
-  clienteId: string,
+  rif: Rif,
   inviate: Record<string, unknown>,
   userId: string,
 ): Promise<ClubProfiloInvestitore> {
-  const attuale = await prisma.clubProfiloInvestitore.findUnique({ where: { clienteId } });
+  const attuale = await prisma.clubProfiloInvestitore.findUnique({ where: rif });
   const prima = rispostePerProfilo(attuale);
 
   const nuove: Risposte = { ...prima };
@@ -64,15 +67,15 @@ export async function salvaProfiloDaConsulente(
 
   const [salvato] = await prisma.$transaction([
     prisma.clubProfiloInvestitore.upsert({
-      where: { clienteId },
-      create: { clienteId, ...campi },
+      where: rif,
+      create: { ...rif, ...campi },
       update: campi,
     }),
     prisma.clubEvento.create({
-      data: { clienteId, tipo: "profilo-modificato-consulente", dati: { userId, campi: modificate } },
+      data: { ...rif, tipo: "profilo-modificato-consulente", dati: { userId, campi: modificate } },
     }),
     ...(appenaCompletato
-      ? [prisma.clubEvento.create({ data: { clienteId, tipo: "profilo-completato", dati: { da: "consulente", userId } } })]
+      ? [prisma.clubEvento.create({ data: { ...rif, tipo: "profilo-completato", dati: { da: "consulente", userId } } })]
       : []),
   ]);
   return salvato;

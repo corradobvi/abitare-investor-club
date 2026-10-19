@@ -53,6 +53,13 @@ async function main() {
         "le operazioni di investimento più adatte. Completa il tuo profilo in pochi minuti qui: {link}",
       // Nuovi investitori creati dal Club: lista-temporanea | crm-diretto (futuro).
       modalitaNuoviInvestitori: "lista-temporanea",
+      // Informativa privacy linkata dai consensi del cliente.
+      urlInformativaPrivacy: "https://abitare-immobiliare.com",
+      // Messaggio WhatsApp con il link d'invito per nuovi investitori, segnaposto {link}.
+      // Uguale a MESSAGGIO_INVITO_NUOVI_PREDEFINITO in src/lib/messaggio-invito.ts.
+      messaggioInvitoNuoviWhatsApp:
+        "Ciao, ti segnalo l'AbitaRE Investor Club: un'area riservata in cui selezioniamo operazioni di " +
+        "investimento immobiliare adatte al profilo di ciascuno. Se ti interessa, registrati qui: {link}",
     };
     for (const [chiave, valore] of Object.entries(iniziali)) {
       const esistente = await prisma.clubImpostazione.findUnique({ where: { chiave } });

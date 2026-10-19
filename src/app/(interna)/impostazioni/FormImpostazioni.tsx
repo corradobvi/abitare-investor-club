@@ -2,16 +2,25 @@
 import { useState, useTransition } from "react";
 import { componiMessaggioInvito, haSegnapostoLink } from "@/lib/messaggio-invito";
 import type { OpzioneReferente } from "@/lib/referenti";
-import { salvaMessaggioInvito, salvaReferenteDefault } from "./azioni";
+import {
+  salvaMessaggioInvito,
+  salvaMessaggioInvitoNuovi,
+  salvaReferenteDefault,
+  salvaUrlInformativa,
+} from "./azioni";
 
 type Props = {
   messaggio: string;
   referenteDefault: string;
   referenti: OpzioneReferente[];
   urlPortale: string;
+  messaggioNuovi: string;
+  urlInformativa: string;
 };
 
 type Avviso = { tipo: "ok" | "errore"; testo: string } | null;
+
+type Salvataggio = (valore: string) => Promise<{ ok: true } | { ok: false; errore: string }>;
 
 const NOME_ESEMPIO = "Mario";
 
@@ -20,98 +29,151 @@ function renderAvviso(a: Avviso) {
   return <span style={{ fontSize: 13, color: a.tipo === "errore" ? "#a33" : "#3d5a3d" }}>{a.testo}</span>;
 }
 
+function renderAnteprima(testo: string) {
+  return (
+    <div
+      style={{
+        background: "var(--off-white)",
+        border: "1px solid var(--sand)",
+        borderRadius: 8,
+        padding: "10px 12px",
+        fontSize: 14,
+        lineHeight: 1.55,
+        whiteSpace: "pre-wrap",
+        overflowWrap: "anywhere",
+      }}
+    >
+      {testo}
+    </div>
+  );
+}
+
+function renderSenzaLink() {
+  return (
+    <p
+      className="badge allerta"
+      style={{ display: "block", whiteSpace: "normal", fontSize: 13, fontWeight: 500, padding: "8px 10px", borderRadius: 8, marginTop: 10 }}
+    >
+      ⚠ Manca il segnaposto {"{link}"}: senza, chi riceve il messaggio non avrebbe il link. Aggiungilo per poter salvare.
+    </p>
+  );
+}
+
 export default function FormImpostazioni(props: Props) {
-  const [messaggio, setMessaggio] = useState(props.messaggio);
-  const [messaggioSalvato, setMessaggioSalvato] = useState(props.messaggio);
-  const [referente, setReferente] = useState(props.referenteDefault);
-  const [referenteSalvato, setReferenteSalvato] = useState(props.referenteDefault);
-  const [avvisoMessaggio, setAvvisoMessaggio] = useState<Avviso>(null);
-  const [avvisoReferente, setAvvisoReferente] = useState<Avviso>(null);
+  const [valori, setValori] = useState({
+    messaggio: props.messaggio,
+    messaggioNuovi: props.messaggioNuovi,
+    urlInformativa: props.urlInformativa,
+    referente: props.referenteDefault,
+  });
+  const [salvati, setSalvati] = useState(valori);
+  const [avvisi, setAvvisi] = useState<Record<keyof typeof valori, Avviso>>({
+    messaggio: null,
+    messaggioNuovi: null,
+    urlInformativa: null,
+    referente: null,
+  });
   const [inCorso, avvia] = useTransition();
 
-  const linkEsempio = `${props.urlPortale.replace(/\/+$/, "") || "https://…"}/c/esempio`;
-  const senzaLink = !haSegnapostoLink(messaggio);
+  const base = props.urlPortale.replace(/\/+$/, "") || "https://…";
 
-  function salvaMessaggio() {
-    setAvvisoMessaggio(null);
+  function cambia(k: keyof typeof valori, v: string) {
+    setAvvisi((a) => ({ ...a, [k]: null }));
+    setValori((x) => ({ ...x, [k]: v }));
+  }
+
+  function salva(k: keyof typeof valori, azione: Salvataggio, testoOk: string) {
+    setAvvisi((a) => ({ ...a, [k]: null }));
     avvia(async () => {
-      const r = await salvaMessaggioInvito(messaggio).catch(() => null);
+      const valore = k === "referente" ? valori[k] : valori[k].trim();
+      const r = await azione(valore).catch(() => null);
       if (!r || !r.ok) {
-        setAvvisoMessaggio({ tipo: "errore", testo: r && !r.ok ? r.errore : "Salvataggio non riuscito. Riprova." });
+        setAvvisi((a) => ({ ...a, [k]: { tipo: "errore", testo: r && !r.ok ? r.errore : "Salvataggio non riuscito. Riprova." } }));
         return;
       }
-      setMessaggio(messaggio.trim());
-      setMessaggioSalvato(messaggio.trim());
-      setAvvisoMessaggio({ tipo: "ok", testo: "Messaggio salvato." });
+      setValori((x) => ({ ...x, [k]: valore }));
+      setSalvati((x) => ({ ...x, [k]: valore }));
+      setAvvisi((a) => ({ ...a, [k]: { tipo: "ok", testo: testoOk } }));
     });
   }
 
-  function salvaReferente() {
-    setAvvisoReferente(null);
-    avvia(async () => {
-      const r = await salvaReferenteDefault(referente).catch(() => null);
-      if (!r || !r.ok) {
-        setAvvisoReferente({ tipo: "errore", testo: r && !r.ok ? r.errore : "Salvataggio non riuscito. Riprova." });
-        return;
-      }
-      setReferenteSalvato(referente);
-      setAvvisoReferente({ tipo: "ok", testo: "Referente di default salvato." });
-    });
+  function renderPulsante(k: keyof typeof valori, testo: string, azione: Salvataggio, testoOk: string, bloccato = false) {
+    const invariato = (k === "referente" ? valori[k] : valori[k].trim()) === salvati[k];
+    return (
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
+        <button
+          type="button"
+          className="pulsante"
+          onClick={() => salva(k, azione, testoOk)}
+          disabled={inCorso || bloccato || invariato || !valori[k]}
+        >
+          {testo}
+        </button>
+        {renderAvviso(avvisi[k])}
+      </div>
+    );
+  }
+
+  function renderMessaggio(
+    k: "messaggio" | "messaggioNuovi",
+    titolo: string,
+    descrizione: React.ReactNode,
+    anteprima: string,
+    azione: Salvataggio,
+  ) {
+    const senzaLink = !haSegnapostoLink(valori[k]);
+    return (
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>{titolo}</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>{descrizione}</p>
+        <textarea className="campo" rows={5} value={valori[k]} onChange={(e) => cambia(k, e.target.value)} />
+        {senzaLink ? renderSenzaLink() : null}
+        <div className="etichetta" style={{ marginTop: 14 }}>Anteprima</div>
+        {renderAnteprima(anteprima)}
+        {renderPulsante(k, "Salva messaggio", azione, "Messaggio salvato.", senzaLink)}
+      </section>
+    );
   }
 
   return (
     <div style={{ display: "grid", gap: 20 }}>
-      <section className="riquadro">
-        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Messaggio di invito WhatsApp</h2>
-        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+      {renderMessaggio(
+        "messaggio",
+        "Messaggio di invito WhatsApp",
+        <>
           È il testo che si apre con &quot;Apri WhatsApp&quot; nella scheda. Scrivi <strong>{"{nome}"}</strong> dove va il
-          nome del cliente e <strong>{"{link}"}</strong> dove va il suo link personale.
+          nome del cliente e <strong>{"{link}"}</strong> dove va il suo link personale. Anteprima con il nome
+          d&apos;esempio &quot;{NOME_ESEMPIO}&quot;.
+        </>,
+        componiMessaggioInvito(valori.messaggio, NOME_ESEMPIO, `${base}/c/esempio`),
+        salvaMessaggioInvito,
+      )}
+
+      {renderMessaggio(
+        "messaggioNuovi",
+        "Messaggio WhatsApp del link per nuovi investitori",
+        <>
+          È il testo che si apre con &quot;Condividi su WhatsApp&quot; nel riquadro &quot;Il mio link d&apos;invito per
+          nuovi investitori&quot; in Home. Scrivi <strong>{"{link}"}</strong> dove va il link.
+        </>,
+        componiMessaggioInvito(valori.messaggioNuovi, null, `${base}/entra/esempio`),
+        salvaMessaggioInvitoNuovi,
+      )}
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Informativa privacy</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Indirizzo della pagina dell&apos;informativa, linkata accanto ai consensi nella procedura del cliente e nel
+          modulo di registrazione.
         </p>
-        <textarea
+        <input
           className="campo"
-          rows={5}
-          value={messaggio}
-          onChange={(e) => {
-            setAvvisoMessaggio(null);
-            setMessaggio(e.target.value);
-          }}
+          type="url"
+          value={valori.urlInformativa}
+          onChange={(e) => cambia("urlInformativa", e.target.value)}
+          style={{ maxWidth: 520 }}
         />
-        {senzaLink ? (
-          <p
-            className="badge allerta"
-            style={{ display: "block", whiteSpace: "normal", fontSize: 13, fontWeight: 500, padding: "8px 10px", borderRadius: 8, marginTop: 10 }}
-          >
-            ⚠ Manca il segnaposto {"{link}"}: senza, il cliente non riceverebbe il suo link. Aggiungilo per poter salvare.
-          </p>
-        ) : null}
-        <div className="etichetta" style={{ marginTop: 14 }}>
-          Anteprima (con il nome d&apos;esempio &quot;{NOME_ESEMPIO}&quot;)
-        </div>
-        <div
-          style={{
-            background: "var(--off-white)",
-            border: "1px solid var(--sand)",
-            borderRadius: 8,
-            padding: "10px 12px",
-            fontSize: 14,
-            lineHeight: 1.55,
-            whiteSpace: "pre-wrap",
-            overflowWrap: "anywhere",
-          }}
-        >
-          {componiMessaggioInvito(messaggio, NOME_ESEMPIO, linkEsempio)}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
-          <button
-            type="button"
-            className="pulsante"
-            onClick={salvaMessaggio}
-            disabled={inCorso || senzaLink || messaggio.trim() === messaggioSalvato}
-          >
-            Salva messaggio
-          </button>
-          {renderAvviso(avvisoMessaggio)}
-        </div>
+        {renderPulsante("urlInformativa", "Salva indirizzo", salvaUrlInformativa, "Indirizzo salvato.")}
       </section>
 
       <section className="riquadro">
@@ -121,31 +183,18 @@ export default function FormImpostazioni(props: Props) {
         </p>
         <select
           className="campo"
-          value={referente}
-          onChange={(e) => {
-            setAvvisoReferente(null);
-            setReferente(e.target.value);
-          }}
+          value={valori.referente}
+          onChange={(e) => cambia("referente", e.target.value)}
           style={{ maxWidth: 420 }}
         >
-          {referente ? null : <option value="">Scegli…</option>}
+          {valori.referente ? null : <option value="">Scegli…</option>}
           {props.referenti.map((o) => (
             <option key={o.valore} value={o.valore}>
               {o.etichetta}
             </option>
           ))}
         </select>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
-          <button
-            type="button"
-            className="pulsante"
-            onClick={salvaReferente}
-            disabled={inCorso || !referente || referente === referenteSalvato}
-          >
-            Salva referente
-          </button>
-          {renderAvviso(avvisoReferente)}
-        </div>
+        {renderPulsante("referente", "Salva referente", salvaReferenteDefault, "Referente di default salvato.")}
       </section>
     </div>
   );

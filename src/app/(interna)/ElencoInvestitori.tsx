@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { RigaElenco } from "@/lib/investitori";
 import { DOMANDE_PER_CHIAVE, etichettaRisposta, type ChiaveDomanda } from "@/lib/profilo/domande";
 import { contaPerFase, FASI, type Fase } from "@/lib/profilo/fase";
+import PulsantiConferma from "./PulsantiConferma";
 
 type Filtri = {
   ricerca: string;
@@ -47,6 +48,7 @@ const FILTRI_DOMANDA: { chiave: ChiaveDomanda & keyof Filtri; etichetta: string 
 ];
 
 const ETICHETTA_NUOVO = "Nuovo · non ancora nel CRM";
+const ETICHETTA_DA_CONFERMARE = "Da confermare";
 
 function normalizza(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -126,7 +128,12 @@ function renderRiga(r: RigaElenco) {
         <Link href={`/investitori/${r.chiave}`} style={{ fontWeight: 600, textDecoration: "none" }}>
           {r.nomeCompleto}
         </Link>
-        {r.nuovo ? (
+        {r.daConfermare ? (
+          <div style={{ marginTop: 4, display: "grid", gap: 6, justifyItems: "start" }}>
+            <span className="badge allerta">{ETICHETTA_DA_CONFERMARE}</span>
+            <PulsantiConferma chiave={r.chiave} nome={r.nomeCompleto} piccoli />
+          </div>
+        ) : r.nuovo ? (
           <div style={{ marginTop: 3 }}>
             <span className="badge sabbia">{ETICHETTA_NUOVO}</span>
           </div>

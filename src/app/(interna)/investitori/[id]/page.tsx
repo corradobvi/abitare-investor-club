@@ -8,6 +8,7 @@ import { opzioniReferente } from "@/lib/referenti";
 import type { ClubContattoNuovo } from "@prisma/client";
 import { data } from "@/lib/date";
 import ModuloContatto from "../../ModuloContatto";
+import PulsantiConferma from "../../PulsantiConferma";
 import SchedaProfilo from "./SchedaProfilo";
 import { salvaDatiNuovo } from "./azioni";
 
@@ -47,6 +48,19 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
           <span className="badge sabbia">Nuovo · non ancora nel CRM</span>
           <span className="tenue" style={{ fontSize: 13 }}>Verrà creato nel CRM quando il Club sarà collegato.</span>
         </p>
+        {contatto.stato === "da-confermare" ? (
+          <div
+            className="badge allerta"
+            style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", whiteSpace: "normal", fontWeight: 500, fontSize: 13, padding: "10px 12px", borderRadius: 8, marginBottom: 16 }}
+          >
+            <span style={{ flex: "1 1 260px" }}>
+              <strong>Da confermare.</strong> Si è registrato da solo con il link d&apos;invito del referente
+              {contatto.consensoContattoIl ? `, con consenso al contatto del ${data(contatto.consensoContattoIl)}` : ""}.
+              Controlla i dati e conferma, oppure scarta se non è un contatto valido.
+            </span>
+            <PulsantiConferma chiave={investitore.chiave} nome={nomeCompleto(investitore)} dopoScarta="/" />
+          </div>
+        ) : null}
         <ModuloContatto
           iniziali={{
             nome: contatto.nome,

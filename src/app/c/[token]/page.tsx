@@ -1,53 +1,51 @@
-// Link personale del cliente. In questa fase mostra solo un segnaposto: la
-// procedura guidata arriva nella fase 3b. Nessun dato del cliente in pagina.
+// Link personale del cliente: procedura guidata del profilo d'investimento.
+//
+// - Link revocato, inesistente o che non porta piu' a un investitore: "Link non valido".
+// - Portale spento (portaleClienteAttivo != "true"): "area in preparazione";
+//   chi ha una sessione dell'area interna vede invece la procedura in
+//   ANTEPRIMA, senza salvare nulla.
+// - Portale attivo: procedura guidata, salvata a ogni passo.
+// In pagina solo il nome del cliente e il nome del referente. L'apertura si
+// conta dal browser (PingApertura / ProceduraGuidata), non qui.
 import type { Metadata } from "next";
-import { apriInvito } from "@/lib/inviti";
+import { leggiImpostazioni, URL_INFORMATIVA_PRIVACY_PREDEFINITO } from "@/lib/impostazioni";
+import { linkValido } from "@/lib/inviti";
+import { investitoreDelLink, modalitaPortale } from "@/lib/portale";
+import { profiliPerRif, rispostePerProfilo } from "@/lib/profilo/archivio";
+import { chiaveDiRif } from "@/lib/riferimento";
+import { NOINDEX, renderPaginaMessaggio, TESTO_IN_PREPARAZIONE, TESTO_LINK_NON_VALIDO } from "@/app/portale-ui";
+import PingApertura from "./PingApertura";
+import ProceduraGuidata from "./ProceduraGuidata";
 
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "AbitaRE Investor Club",
-  robots: { index: false, follow: false },
+  robots: NOINDEX,
   referrer: "no-referrer",
 };
 
-function renderMarchio() {
-  return (
-    <>
-      <h1 className="titolo" style={{ fontSize: 40, lineHeight: 1.1 }}>
-        <span style={{ color: "var(--navy)" }}>Abita</span>
-        <span style={{ color: "var(--sand)" }}>RE</span>
-      </h1>
-      <p className="tenue" style={{ letterSpacing: 3, fontSize: 12, marginTop: 6 }}>INVESTOR CLUB</p>
-    </>
-  );
-}
-
 export default async function LinkClientePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const link = await apriInvito(token);
+  const imp = await leggiImpostazioni();
+  const link = await linkValido(token);
+  const investitore = link ? await investitoreDelLink(link, imp) : null;
+  if (!investitore) return renderPaginaMessaggio(TESTO_LINK_NON_VALIDO.titolo, TESTO_LINK_NON_VALIDO.testo);
 
+  const modalita = await modalitaPortale(imp);
+  if (modalita === "chiuso") {
+    return renderPaginaMessaggio(TESTO_IN_PREPARAZIONE.titolo, TESTO_IN_PREPARAZIONE.testo, <PingApertura token={token} />);
+  }
+
+  const profilo = (await profiliPerRif([investitore.rif])).get(chiaveDiRif(investitore.rif));
   return (
-    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 16 }}>
-      <div style={{ maxWidth: 460, textAlign: "center" }}>
-        {renderMarchio()}
-        <div style={{ width: 48, height: 1, background: "var(--sand)", margin: "28px auto" }} />
-        {link ? (
-          <>
-            <p className="titolo" style={{ fontSize: 24 }}>Area in preparazione</p>
-            <p className="tenue" style={{ marginTop: 12, lineHeight: 1.6 }}>
-              Stiamo preparando la tua area riservata. Il tuo consulente ti avviserà appena sarà pronta.
-            </p>
-          </>
-        ) : (
-          <>
-            <p className="titolo" style={{ fontSize: 24 }}>Link non valido</p>
-            <p className="tenue" style={{ marginTop: 12, lineHeight: 1.6 }}>
-              Il link non è più attivo. Chiedi al tuo consulente AbitaRE di inviartene uno nuovo.
-            </p>
-          </>
-        )}
-      </div>
-    </main>
+    <ProceduraGuidata
+      token={token}
+      nome={investitore.nome}
+      referente={investitore.referente}
+      risposteIniziali={rispostePerProfilo(profilo)}
+      anteprima={modalita === "anteprima"}
+      urlInformativa={imp.urlInformativaPrivacy || URL_INFORMATIVA_PRIVACY_PREDEFINITO}
+    />
   );
 }

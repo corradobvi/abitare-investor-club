@@ -80,3 +80,69 @@ export async function salvaProfiloDaConsulente(
   ]);
   return salvato;
 }
+
+// Salvataggio dalla procedura guidata del cliente (/c/<token>), a ogni passo:
+// "modifiche" contiene la risposta appena data oppure i due consensi.
+// Stesse regole del consulente (risposte valide, non applicabili azzerate,
+// completatoIl); in piu' i consensi, con la data in cui sono stati dati.
+// Registra "passo-completato" e, se il profilo e' appena diventato completo,
+// "profilo-completato" con origine cliente.
+export async function salvaProfiloDaCliente(
+  rif: Rif,
+  modifiche: Risposte,
+  passo: string,
+): Promise<{ profilo: ClubProfiloInvestitore; risposte: Risposte }> {
+  const attuale = await prisma.clubProfiloInvestitore.findUnique({ where: rif });
+  const prima = rispostePerProfilo(attuale);
+
+  const nuove: Risposte = { ...prima };
+  for (const [chiave, v] of Object.entries(modifiche) as [ChiaveDomanda, unknown][]) {
+    if (!DOMANDE.some((d) => d.chiave === chiave)) throw new RispostaNonValida(chiave);
+    const valore = v ?? null;
+    if (!rispostaValida(chiave, valore)) throw new RispostaNonValida(chiave);
+    nuove[chiave] = valore as string | boolean | null;
+  }
+  const finali = senzaNonApplicabili(nuove);
+  finali.consensoProfilazione = finali.consensoProfilazione === true;
+  finali.consensoComunicazioni = finali.consensoComunicazioni === true;
+
+  const ora = new Date();
+  const dataConsenso = (dato: boolean, giaDato: boolean | undefined, il: Date | null | undefined) =>
+    dato ? (giaDato && il ? il : ora) : null;
+
+  const dati: Partial<Record<ChiaveDomanda, string | boolean | null>> = {};
+  for (const d of DOMANDE) dati[d.chiave] = finali[d.chiave] ?? null;
+  const campi = {
+    ...(dati as Record<string, string | boolean | null>),
+    consensoProfilazione: finali.consensoProfilazione,
+    consensoComunicazioni: finali.consensoComunicazioni,
+    consensoProfilazioneIl: dataConsenso(
+      finali.consensoProfilazione,
+      attuale?.consensoProfilazione,
+      attuale?.consensoProfilazioneIl,
+    ),
+    consensoComunicazioniIl: dataConsenso(
+      finali.consensoComunicazioni,
+      attuale?.consensoComunicazioni,
+      attuale?.consensoComunicazioniIl,
+    ),
+    completatoIl: nuovoCompletatoIl(finali, attuale?.completatoIl ?? null),
+    ultimaModificaDa: "cliente",
+    ultimaModificaUserId: null,
+  };
+
+  const appenaCompletato = !attuale?.completatoIl && completezzaProfilo(finali).completo;
+
+  const [salvato] = await prisma.$transaction([
+    prisma.clubProfiloInvestitore.upsert({
+      where: rif,
+      create: { ...rif, ...campi },
+      update: campi,
+    }),
+    prisma.clubEvento.create({ data: { ...rif, tipo: "passo-completato", dati: { da: "cliente", passo } } }),
+    ...(appenaCompletato
+      ? [prisma.clubEvento.create({ data: { ...rif, tipo: "profilo-completato", dati: { da: "cliente" } } })]
+      : []),
+  ]);
+  return { profilo: salvato, risposte: finali };
+}

@@ -13,7 +13,7 @@ import { componiMessaggioInvito, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/mess
 import { chiaveDiRiga, filtroPerRif, type Rif } from "@/lib/riferimento";
 
 // 32 byte casuali in base64url = 43 caratteri.
-function nuovoToken(): string {
+export function nuovoToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
@@ -50,12 +50,20 @@ export async function revocaInvito(rif: Rif, userId: string): Promise<number> {
   return r.count;
 }
 
-// Apertura del link da parte del cliente. Valido = esiste e non e' revocato:
-// in quel caso registra "link-aperto" e aggiorna ultimoAccessoIl/accessiTotali.
-export async function apriInvito(token: string): Promise<ClubLinkInvito | null> {
+// Link valido = esiste e non e' revocato. Non conta l'apertura.
+export async function linkValido(token: string): Promise<ClubLinkInvito | null> {
   if (!token || token.length < 32) return null;
   const link = await prisma.clubLinkInvito.findUnique({ where: { token } });
-  if (!link || link.revocatoIl) return null;
+  return link && !link.revocatoIl ? link : null;
+}
+
+// Apertura del link da parte del cliente: registra "link-aperto" e aggiorna
+// ultimoAccessoIl/accessiTotali. La chiama SOLO il browser dopo aver mostrato
+// la pagina (vedi src/app/c/[token]/azioni.ts), non la semplice richiesta
+// della pagina: le anteprime automatiche (es. WhatsApp) non contano.
+export async function apriInvito(token: string): Promise<ClubLinkInvito | null> {
+  const link = await linkValido(token);
+  if (!link) return null;
   const [aggiornato] = await prisma.$transaction([
     prisma.clubLinkInvito.update({
       where: { id: link.id },

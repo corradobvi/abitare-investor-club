@@ -27,3 +27,30 @@ export async function salvaReferenteDefault(userId: string): Promise<Esito> {
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+export async function salvaMessaggioInvitoNuovi(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (!valore) return { ok: false, errore: "Il messaggio non può essere vuoto." };
+  if (valore.length > 1000) return { ok: false, errore: "Il messaggio è troppo lungo (massimo 1000 caratteri)." };
+  if (!haSegnapostoLink(valore)) return { ok: false, errore: "Manca il segnaposto {link}: chi lo riceve non avrebbe il link." };
+  await salvaImpostazione("messaggioInvitoNuoviWhatsApp", valore, utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function salvaUrlInformativa(url: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof url === "string" ? url.trim() : "";
+  let valido = false;
+  try {
+    const u = new URL(valore);
+    valido = u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    valido = false;
+  }
+  if (!valido || valore.length > 500) return { ok: false, errore: "Scrivi un indirizzo completo, che inizi con https://" };
+  await salvaImpostazione("urlInformativaPrivacy", valore, utente.id);
+  revalidatePath("/impostazioni");
+  return { ok: true };
+}

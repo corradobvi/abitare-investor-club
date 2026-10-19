@@ -8,6 +8,13 @@ export const MESSAGGIO_INVITO_PREDEFINITO =
   "Ciao {nome}, ti invito nell'AbitaRE Investor Club, l'area riservata in cui selezioniamo per te " +
   "le operazioni di investimento più adatte. Completa il tuo profilo in pochi minuti qui: {link}";
 
+// Messaggio con il link d'invito per nuovi investitori (impostazione
+// messaggioInvitoNuoviWhatsApp, solo {link}). Uguale al valore iniziale in
+// prisma/impostazioni-iniziali.mjs.
+export const MESSAGGIO_INVITO_NUOVI_PREDEFINITO =
+  "Ciao, ti segnalo l'AbitaRE Investor Club: un'area riservata in cui selezioniamo operazioni di " +
+  "investimento immobiliare adatte al profilo di ciascuno. Se ti interessa, registrati qui: {link}";
+
 export function haSegnapostoLink(modello: string): boolean {
   return modello.includes("{link}");
 }

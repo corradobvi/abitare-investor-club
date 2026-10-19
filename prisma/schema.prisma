@@ -45,10 +45,10 @@ model ClubProfiloInvestitore {
   interesseGoldenVisa   Boolean?
 
   // CONSENSI: il booleano e la data in cui e' stato dato.
-  consensoProfilazione     Boolean   @default(false)
-  consensoProfilazioneIl   DateTime?
-  consensoComunicazioni    Boolean   @default(false)
-  consensoComunicazioniIl  DateTime?
+  consensoProfilazione    Boolean   @default(false)
+  consensoProfilazioneIl  DateTime?
+  consensoComunicazioni   Boolean   @default(false)
+  consensoComunicazioniIl DateTime?
 
   completatoIl         DateTime?
   ultimaModificaDa     String? // consulente | cliente
@@ -80,7 +80,7 @@ model ClubEvento {
   id              String   @id @default(cuid())
   clienteId       String?
   contattoNuovoId String?
-  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | impostazione-modificata
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata
   dati            Json?
   creatoIl        DateTime @default(now())
 
@@ -103,20 +103,35 @@ model ClubImpostazione {
 // "Investitore") al primo collegamento in scrittura: crmClienteId e
 // importatoIl si compilano in quel momento.
 model ClubContattoNuovo {
-  id              String    @id @default(cuid())
-  nome            String
-  cognome         String
-  cellulare       String // salvato con cellulareDaSalvare (src/lib/telefono.ts)
-  email           String?
-  note            String?
-  referenteUserId String // id User del CRM
-  creatoDaUserId  String // id User del CRM
-  stato           String    @default("confermato") // da-confermare | confermato | importato
-  crmClienteId    String?
-  importatoIl     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  nome               String
+  cognome            String
+  cellulare          String // salvato con cellulareDaSalvare (src/lib/telefono.ts)
+  email              String?
+  note               String?
+  referenteUserId    String // id User del CRM
+  creatoDaUserId     String // id User del CRM
+  stato              String    @default("confermato") // da-confermare | confermato | importato
+  // Consenso al contatto dato da chi si registra da solo (/entra/<codice>).
+  consensoContattoIl DateTime?
+  crmClienteId       String?
+  importatoIl        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@index([cellulare])
   @@index([referenteUserId])
+}
+
+// Link personale di un utente CRM per far registrare nuovi investitori
+// (/entra/<codice>). Un solo codice attivo per utente (indice unico parziale
+// scritto nella migrazione); "Rigenera link" disattiva il vecchio.
+model ClubCodiceInvito {
+  id        String   @id @default(cuid())
+  userId    String // id User del CRM: referente di chi si registra
+  codice    String   @unique // casuale, non indovinabile, almeno 10 caratteri
+  attivo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

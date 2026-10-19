@@ -18,6 +18,11 @@ export function linkWhatsapp(numero: string, testo: string): string {
   return `https://wa.me/${numero}?text=${encodeURIComponent(testo)}`;
 }
 
+// Condivisione su WhatsApp senza destinatario: chi invia sceglie a chi mandarlo.
+export function linkCondivisioneWhatsapp(testo: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(testo)}`;
+}
+
 // copia da abitare-crm (src/lib/telefono.ts), da sostituire con l'originale all'integrazione
 // Normalizzazione TOLLERANTE per il CONFRONTO (controllo doppioni), mai per la
 // scrittura: tiene solo le cifre e, se sono almeno 10, ritorna le ULTIME 10.

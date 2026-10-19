@@ -21,6 +21,7 @@ export type Investitore = {
   rif: Rif;
   chiave: string;
   nuovo: boolean;
+  daConfermare: boolean; // nuovo registrato da solo col link di un consulente
   nome: string | null;
   cognome: string | null;
   cellulare: string | null;
@@ -40,6 +41,7 @@ function daClienteCrm(c: ClienteInvestitore): Investitore {
     rif,
     chiave: chiaveDiRif(rif),
     nuovo: false,
+    daConfermare: false,
     nome: c.nome,
     cognome: c.cognome,
     cellulare: c.cellulare,
@@ -62,6 +64,7 @@ async function daContattiNuovi(contatti: ClubContattoNuovo[]): Promise<Investito
       rif,
       chiave: chiaveDiRif(rif),
       nuovo: true,
+      daConfermare: c.stato === "da-confermare",
       nome: c.nome,
       cognome: c.cognome,
       cellulare: c.cellulare,
@@ -95,6 +98,7 @@ export type ReferenteMostrato = { userId: string | null; nome: string; default: 
 export type RigaElenco = {
   chiave: string;
   nuovo: boolean;
+  daConfermare: boolean;
   nomeCompleto: string;
   stato: string | null;
   referente: ReferenteMostrato;
@@ -132,6 +136,7 @@ function rigaElenco(
   return {
     chiave: c.chiave,
     nuovo: c.nuovo,
+    daConfermare: c.daConfermare,
     nomeCompleto: nomeCompleto(c),
     stato: c.stato,
     referente,

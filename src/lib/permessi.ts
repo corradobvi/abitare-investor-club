@@ -44,6 +44,19 @@ export async function utenteConAccesso(): Promise<UtenteClub> {
   return { id: crm.id, ruolo: crm.role, nome: crm.name, visibilita };
 }
 
+// Come utenteConAccesso, ma senza reindirizzare: null se chi guarda non e'
+// un utente dell'area interna. Serve alle pagine pubbliche (anteprima del
+// portale per i consulenti, aperture dei link non conteggiate).
+export async function utenteInterno(): Promise<UtenteClub | null> {
+  const sessione = await utenteSessione().catch(() => null);
+  if (!sessione) return null;
+  const crm = (await utentiPerId([sessione.id])).get(sessione.id);
+  if (!crm || !crm.active) return null;
+  const visibilita = visibilitaPerRuolo(crm.role);
+  if (visibilita === "nessuno") return null;
+  return { id: crm.id, ruolo: crm.role, nome: crm.name, visibilita };
+}
+
 export async function puoVedereCliente(
   utente: UtenteClub,
   cliente: Pick<ClienteInvestitore, "assegnatoId" | "consulenteAttivo">,

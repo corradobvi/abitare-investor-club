@@ -40,6 +40,8 @@ export type Domanda = {
   opzioni: Opzione[];
   // Assente = sempre applicabile.
   applicabile?: (r: Risposte) => boolean;
+  // Nota educativa mostrata al cliente sotto le opzioni (procedura guidata).
+  nota?: string;
 };
 
 const SI_NO: Opzione[] = [
@@ -81,6 +83,9 @@ export const DOMANDE: Domanda[] = [
     testo: "Che rendimento desideri da un'operazione di flipping?",
     tipo: "scelta",
     applicabile: conFlipping,
+    nota:
+      "Come riferimento: nel flipping i rendimenti stimati si collocano in genere tra il 10% e il 20% annuo, " +
+      "con rischi legati a tempi e costi dei lavori.",
     opzioni: [
       { valore: "fino-12", etichetta: "fino al 12%" },
       { valore: "12-18", etichetta: "dal 12 al 18%" },
@@ -93,6 +98,9 @@ export const DOMANDE: Domanda[] = [
     testo: "Che rendimento annuo desideri dall'affitto?",
     tipo: "scelta",
     applicabile: conRendita,
+    nota:
+      "Come riferimento: in Italia la rendita netta da affitto si colloca di solito tra il 3% e il 6% annuo; " +
+      "affitti brevi e mercati esteri possono offrire di più, con maggiore gestione e rischio.",
     opzioni: [
       { valore: "3-5", etichetta: "dal 3 al 5% annuo" },
       { valore: "5-7", etichetta: "dal 5 al 7% annuo" },
@@ -150,6 +158,8 @@ export const DOMANDE: Domanda[] = [
     testo: "Ti interessano gli investimenti che danno diritto alla Golden Visa?",
     tipo: "sino",
     applicabile: conEstero,
+    nota:
+      "Alcuni investimenti immobiliari all'estero, ad esempio a Dubai, possono dare accesso a un permesso di residenza.",
     opzioni: SI_NO,
   },
   {
@@ -157,6 +167,9 @@ export const DOMANDE: Domanda[] = [
     testo: "Nel flipping preferisci un'operazione intera o una quota?",
     tipo: "scelta",
     applicabile: conFlipping,
+    nota:
+      "In quota significa partecipare insieme ad altri investitori a una società costituita apposta per " +
+      "l'operazione, con una quota minima prestabilita.",
     opzioni: [
       { valore: "intera", etichetta: "Un'operazione intera" },
       { valore: "quota", etichetta: "Una quota, insieme ad altri investitori" },
@@ -216,13 +229,13 @@ export const DOMANDE: Domanda[] = [
   },
   {
     chiave: "consensoProfilazione",
-    testo: "Acconsento all'uso delle mie risposte per ricevere proposte di investimento adatte al mio profilo.",
+    testo: "Acconsento al trattamento dei miei dati per ricevere proposte di investimento in linea con il mio profilo",
     tipo: "consenso",
     opzioni: SI_NO,
   },
   {
     chiave: "consensoComunicazioni",
-    testo: "Acconsento a ricevere comunicazioni sulle nuove opportunità dell'AbitaRE Investor Club.",
+    testo: "Acconsento a ricevere comunicazioni e aggiornamenti dall'AbitaRE Investor Club",
     tipo: "consenso",
     opzioni: SI_NO,
   },

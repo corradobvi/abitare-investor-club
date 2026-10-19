@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { authConfig } from "@/lib/auth.config";
 
 // Tutte le pagine dell'area interna richiedono il login. Restano fuori: la
-// pagina di login, le API di NextAuth, i link personali dei clienti (/c/...)
+// pagina di login, le API di NextAuth, le pagine pubbliche del portale (link
+// personali dei clienti /c/... e link per nuovi investitori /entra/...)
 // e /verifica (che in produzione risponde comunque 404). Le regole per ruolo
 // sono in src/lib/permessi.ts e le applicano pagine e azioni.
 const { auth } = NextAuth(authConfig);
@@ -15,5 +16,5 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!login|api/auth|c/|verifica|_next/|favicon.ico).*)"],
+  matcher: ["/((?!login|api/auth|c/|entra/|verifica|_next/|favicon.ico).*)"],
 };

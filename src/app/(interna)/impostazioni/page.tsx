@@ -1,6 +1,6 @@
 import { utenteImpostazioni } from "@/lib/permessi";
-import { leggiImpostazioni } from "@/lib/impostazioni";
-import { MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
+import { leggiImpostazioni, URL_INFORMATIVA_PRIVACY_PREDEFINITO } from "@/lib/impostazioni";
+import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { opzioniReferente } from "@/lib/referenti";
 import FormImpostazioni from "./FormImpostazioni";
 
@@ -38,6 +38,8 @@ export default async function ImpostazioniPage() {
         referenteDefault={imp.referenteDefaultUserId ?? ""}
         referenti={referenti}
         urlPortale={imp.urlPubblicoPortale ?? ""}
+        messaggioNuovi={imp.messaggioInvitoNuoviWhatsApp || MESSAGGIO_INVITO_NUOVI_PREDEFINITO}
+        urlInformativa={imp.urlInformativaPrivacy || URL_INFORMATIVA_PRIVACY_PREDEFINITO}
       />
 
       <section className="riquadro" style={{ marginTop: 20 }}>
@@ -49,6 +51,10 @@ export default async function ImpostazioniPage() {
           {renderSolaLettura("Criterio d'ingresso: linea", imp.criterioLinea)}
           {renderSolaLettura("Indirizzo pubblico del portale", imp.urlPubblicoPortale)}
           {renderSolaLettura("Modalità nuovi investitori", MODALITA[modalita] ?? modalita)}
+          {renderSolaLettura(
+            "Portale clienti",
+            imp.portaleClienteAttivo === "true" ? "Attivo" : "Spento (i clienti vedono “area in preparazione”)",
+          )}
         </div>
         <p className="tenue" style={{ fontSize: 12, marginTop: 14 }}>
           È investitore chi, nel CRM, ha il ruolo cliente indicato oppure il tag oppure la linea (basta uno dei tre).

@@ -36,6 +36,11 @@ async function inSolaLettura<T>(fn: (c: PoolClient) => Promise<T>): Promise<T> {
   }
 }
 
+// Per la pagina /stato: il CRM risponde a una query banale in sola lettura.
+export async function crmRaggiungibile(): Promise<void> {
+  await inSolaLettura((c) => c.query("SELECT 1"));
+}
+
 export type CriterioInvestitore = "ruolo" | "tag" | "linea";
 
 export type ClienteInvestitore = {

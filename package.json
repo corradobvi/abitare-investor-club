@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "next dev",
@@ -14,9 +14,10 @@
   "dependencies": {
     "@prisma/client": "~6.19.3",
     "bcryptjs": "^2.4.3",
-    "next": "15.5.19",
-    "next-auth": "5.0.0-beta.25",
+    "next": "15.5.28",
+    "next-auth": "5.0.0-beta.32",
     "pg": "^8.13.1",
+    "prisma": "~6.19.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
@@ -26,7 +27,6 @@
     "@types/pg": "^8.11.10",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
-    "prisma": "~6.19.3",
     "typescript": "^5.7.2"
   }
 }

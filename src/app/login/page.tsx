@@ -16,7 +16,11 @@ export default function LoginPage() {
     setInCorso(true);
     const res = await signIn("credentials", { email, password, redirect: false }).catch(() => null);
     if (!res || res.error) {
-      setErrore("Credenziali non valide");
+      setErrore(
+        res?.code === "troppi-tentativi"
+          ? "Troppi tentativi di accesso. Riprova tra 15 minuti."
+          : "Credenziali non valide",
+      );
       setInCorso(false);
       return;
     }

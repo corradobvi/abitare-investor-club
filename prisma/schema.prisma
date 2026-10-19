@@ -135,3 +135,15 @@ model ClubCodiceInvito {
 
   @@index([userId])
 }
+
+// Tentativi di login falliti, per il limite di 5 in 15 minuti per email o IP
+// (src/lib/limite-login.ts). "chiave" e' un'impronta HMAC: email e IP non sono
+// salvati in chiaro. I record piu' vecchi della finestra vengono cancellati.
+model ClubTentativoAccesso {
+  id       String   @id @default(cuid())
+  chiave   String
+  creatoIl DateTime @default(now())
+
+  @@index([chiave, creatoIl])
+  @@index([creatoIl])
+}

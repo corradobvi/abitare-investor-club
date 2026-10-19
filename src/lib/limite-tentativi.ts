@@ -15,7 +15,10 @@ function registro(): Map<string, number[]> {
 // di x-forwarded-for (quello aggiunto dal proxy). I primi valori li puo'
 // scrivere chiunque e non vanno usati per il limite.
 export async function ipRichiesta(): Promise<string> {
-  const h = await headers();
+  return ipDaIntestazioni(await headers());
+}
+
+export function ipDaIntestazioni(h: Headers): string {
   const inoltrati = (h.get("x-forwarded-for") ?? "").split(",").map((s) => s.trim()).filter(Boolean);
   return h.get("x-real-ip")?.trim() || inoltrati[inoltrati.length - 1] || "sconosciuto";
 }

@@ -2,6 +2,7 @@ import { utenteImpostazioni } from "@/lib/permessi";
 import { leggiImpostazioni, URL_INFORMATIVA_PRIVACY_PREDEFINITO } from "@/lib/impostazioni";
 import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { opzioniReferente } from "@/lib/referenti";
+import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import FormImpostazioni from "./FormImpostazioni";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,9 @@ export default async function ImpostazioniPage() {
         urlPortale={imp.urlPubblicoPortale ?? ""}
         messaggioNuovi={imp.messaggioInvitoNuoviWhatsApp || MESSAGGIO_INVITO_NUOVI_PREDEFINITO}
         urlInformativa={imp.urlInformativaPrivacy || URL_INFORMATIVA_PRIVACY_PREDEFINITO}
+        avvertenza={imp.testoAvvertenzaOperazioni || TESTO_AVVERTENZA_PREDEFINITO}
+        testoLegale={imp.testoLegaleQuote ?? ""}
+        messaggioProposta={imp.messaggioPropostaOperazioneWhatsApp || MESSAGGIO_PROPOSTA_PREDEFINITO}
       />
 
       <section className="riquadro" style={{ marginTop: 20 }}>

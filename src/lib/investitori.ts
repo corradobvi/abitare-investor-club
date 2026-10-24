@@ -149,7 +149,9 @@ function rigaElenco(
   };
 }
 
-export async function elencoPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
+// Investitori visibili all'utente con referente, profilo e link: base comune
+// di elenco e compatibilita' con le operazioni.
+async function investitoriCompleti(utente: UtenteClub) {
   const imp = await leggiImpostazioni();
   const investitori = await investitoriVisibili(utente, await tuttiGliInvestitori(imp), imp);
   const rifs = investitori.map((c) => c.rif);
@@ -158,7 +160,37 @@ export async function elencoPerUtente(utente: UtenteClub): Promise<RigaElenco[]>
     profiliPerRif(rifs),
     invitiPerRif(rifs),
   ]);
-  return investitori.map((c, i) => rigaElenco(c, referenti[i], profili.get(c.chiave), inviti.get(c.chiave) ?? []));
+  return investitori.map((c, i) => ({
+    investitore: c,
+    referente: referenti[i],
+    profilo: profili.get(c.chiave),
+    link: inviti.get(c.chiave) ?? [],
+  }));
+}
+
+export async function elencoPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
+  return (await investitoriCompleti(utente)).map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
+}
+
+// Investitore da valutare per le operazioni (sezione "Investitori compatibili").
+export type InvestitoreConProfilo = RigaElenco & {
+  rif: Rif;
+  nome: string | null;
+  cellulare: string | null;
+  tokenAttivo: string | null; // link personale /c/<token> non revocato
+};
+
+export async function investitoriConProfilo(utente: UtenteClub): Promise<InvestitoreConProfilo[]> {
+  return (await investitoriCompleti(utente)).map((x) => {
+    const attivo = x.link.filter((l) => !l.revocatoIl).sort((a, b) => +b.creatoIl - +a.creatoIl)[0];
+    return {
+      ...rigaElenco(x.investitore, x.referente, x.profilo, x.link),
+      rif: x.investitore.rif,
+      nome: x.investitore.nome,
+      cellulare: x.investitore.cellulare,
+      tokenAttivo: attivo?.token ?? null,
+    };
+  });
 }
 
 export type Scheda = {

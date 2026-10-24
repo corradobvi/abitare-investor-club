@@ -76,17 +76,97 @@ model ClubLinkInvito {
 
 // Diario degli eventi del Club, per investitore. Gli eventi generali
 // (impostazione-modificata) non hanno ne' clienteId ne' contattoNuovoId.
+// Gli eventi delle operazioni hanno operazioneId (e, per operazione-proposta,
+// anche l'investitore a cui e' stata proposta).
 model ClubEvento {
   id              String   @id @default(cuid())
   clienteId       String?
   contattoNuovoId String?
-  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata
+  operazioneId    String?
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta
   dati            Json?
   creatoIl        DateTime @default(now())
 
   @@index([clienteId])
   @@index([contattoNuovoId])
+  @@index([operazioneId])
   @@index([creatoIl])
+}
+
+// Operazione d'investimento del catalogo (area interna; nella fase 4b anche
+// nel portale cliente). Importi in euro interi; rendimenti annui stimati in %
+// con due decimali, mai garantiti. Regole e permessi in src/lib/operazioni/ e
+// src/lib/permessi.ts.
+model ClubOperazione {
+  id           String  @id @default(cuid())
+  codice       String  @unique // OP-<anno>-<progressivo a 3 cifre>, es. OP-2026-001
+  titolo       String
+  tipo         String // flipping | rendita-lungo | rendita-breve
+  paese        String
+  citta        String?
+  zona         String?
+  partner      String // abitare | safehouse | altro
+  partnerAltro String?
+  formula      String // intera | quota
+
+  // Solo per formula = quota.
+  numeroMaxSoci        Int?
+  quotaMinima          Int?
+  importoDaRaccogliere Int?
+  importoImpegnato     Int? // aggiornato a mano in questa fase
+
+  prezzoAcquisto         Int?
+  costiLavori            Int?
+  altriCosti             Int?
+  capitaleRichiesto      Int?
+  valoreRivenditaStimato Int? // flipping
+  canoneAnnuoStimato     Int? // rendita
+
+  rendimentoPessimista Decimal? @db.Decimal(6, 2)
+  rendimentoBase       Decimal? @db.Decimal(6, 2)
+  rendimentoOttimista  Decimal? @db.Decimal(6, 2)
+  durataStimataMesi    Int?
+  finanziabile         Boolean  @default(false)
+
+  descrizione      String?
+  puntiDiForza     String?
+  rischi           String? // obbligatorio per pubblicare
+  scadenzaRaccolta DateTime?
+
+  referenteUserId String? // id User del CRM
+  stato           String  @default("bozza") // bozza | in-revisione | pubblicata | raccolta-chiusa | conclusa | ritirata
+
+  creatoDaUserId     String // id User del CRM
+  pubblicataIl       DateTime?
+  pubblicataDaUserId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  file ClubOperazioneFile[]
+
+  @@index([stato])
+}
+
+// Foto e documenti di un'operazione, nell'archivio privato su Cloudflare R2
+// (src/lib/archivio.ts). Si vedono solo con link firmati generati dall'app
+// dopo il controllo dei permessi. Visibilita' per il cliente (fase 4b):
+// anteprima = nella scheda sintetica; riservato = solo dopo la manifestazione
+// d'interesse.
+model ClubOperazioneFile {
+  id               String   @id @default(cuid())
+  operazioneId     String
+  tipo             String // foto | documento
+  visibilita       String   @default("riservato") // anteprima | riservato
+  nome             String // nome originale del file, mostrato
+  chiaveArchivio   String   @unique
+  dimensione       Int // byte
+  ordine           Int      @default(0)
+  caricatoDaUserId String
+  createdAt        DateTime @default(now())
+
+  operazione ClubOperazione @relation(fields: [operazioneId], references: [id])
+
+  @@index([operazioneId, tipo, ordine])
 }
 
 // Impostazioni e feature flag (chiave/valore, chiavi in italiano camelCase).

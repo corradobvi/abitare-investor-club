@@ -130,3 +130,35 @@ a { color: inherit; }
 .elenco-passi { list-style: none; display: grid; gap: 12px; text-align: left; margin-top: 14px; }
 .elenco-passi li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; line-height: 1.5; }
 .elenco-passi .numero { flex: none; display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 999px; background: var(--sand); font-size: 13px; font-weight: 600; }
+
+/* Catalogo operazioni (area interna). */
+.badge.scuro { background: var(--navy); border-color: var(--navy); color: #fff; }
+.badge.spento { background: #eee; border-color: #ddd; color: #777; }
+.menu-principale { display: flex; gap: 4px; }
+.menu-principale a { padding: 6px 10px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; }
+.menu-principale a.attivo { background: var(--off-white); border: 1px solid var(--sand); }
+.griglia-operazioni { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 16px; }
+.scheda-operazione {
+  display: block; background: #fff; border: 1px solid var(--sand); border-radius: 12px; overflow: hidden;
+  text-decoration: none; color: var(--navy);
+}
+.scheda-operazione:hover { border-color: var(--blu-grigio); }
+.copertina {
+  position: relative; aspect-ratio: 16 / 10; background: var(--off-white); display: grid; place-items: center;
+  overflow: hidden;
+}
+.copertina img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.galleria { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.galleria a { display: block; aspect-ratio: 4 / 3; border-radius: 8px; overflow: hidden; background: var(--off-white); border: 1px solid var(--sand); }
+.galleria img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avvertenza {
+  font-size: 13px; line-height: 1.55; background: #fbf6f1; border: 1px solid var(--sand); border-left: 4px solid var(--navy);
+  padding: 12px 14px; border-radius: 8px; white-space: pre-wrap;
+}
+.schede-tab { display: flex; gap: 6px; border-bottom: 1px solid var(--sand); margin-bottom: 20px; flex-wrap: wrap; }
+.schede-tab a { padding: 10px 14px; text-decoration: none; font-weight: 600; font-size: 14px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.schede-tab a.attivo { border-bottom-color: var(--navy); }
+.scenari { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.scenario { border: 1px solid var(--sand); border-radius: 10px; padding: 12px; text-align: center; background: #fff; }
+.scenario.base { border-color: var(--navy); background: var(--off-white); }
+.testo-lungo { white-space: pre-wrap; line-height: 1.6; font-size: 15px; overflow-wrap: anywhere; }

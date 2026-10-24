@@ -54,3 +54,34 @@ export async function salvaUrlInformativa(url: string): Promise<Esito> {
   revalidatePath("/impostazioni");
   return { ok: true };
 }
+
+export async function salvaTestoAvvertenza(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (!valore) return { ok: false, errore: "L'avvertenza non può essere vuota." };
+  if (valore.length > 2000) return { ok: false, errore: "Testo troppo lungo (massimo 2000 caratteri)." };
+  await salvaImpostazione("testoAvvertenzaOperazioni", valore, utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// Puo' essere vuoto: in quel caso le operazioni in quote non si pubblicano.
+export async function salvaTestoLegaleQuote(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (valore.length > 10000) return { ok: false, errore: "Testo troppo lungo (massimo 10000 caratteri)." };
+  await salvaImpostazione("testoLegaleQuote", valore, utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function salvaMessaggioProposta(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (!valore) return { ok: false, errore: "Il messaggio non può essere vuoto." };
+  if (valore.length > 1000) return { ok: false, errore: "Il messaggio è troppo lungo (massimo 1000 caratteri)." };
+  if (!valore.includes("{operazione}")) return { ok: false, errore: "Manca il segnaposto {operazione}: il cliente non saprebbe di quale operazione si parla." };
+  await salvaImpostazione("messaggioPropostaOperazioneWhatsApp", valore, utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

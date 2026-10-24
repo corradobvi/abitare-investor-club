@@ -99,3 +99,40 @@ export function puoScegliereReferente(ruolo: string): boolean {
 export function puoEssereReferente(utente: { role: string; active: boolean }): boolean {
   return utente.active && visibilitaPerRuolo(utente.role) !== "nessuno";
 }
+
+// --- Operazioni del catalogo ---
+//
+// - Creare, modificare, caricare file: Admin, BackOffice, ConsulenteSenior,
+//   in qualsiasi stato tranne conclusa e ritirata.
+// - Inviare in revisione (da bozza): chi l'ha creata o chi puo' modificarla.
+// - Pubblicare, chiudere la raccolta, concludere, ritirare: solo Admin.
+// - Vedere il catalogo: tutti i ruoli dell'area interna; il Consulente vede
+//   solo le operazioni pubblicate.
+type OperazionePerPermessi = { stato: string; creatoDaUserId: string };
+
+const STATI_CHIUSI = ["conclusa", "ritirata"];
+
+export function puoCreareOperazioni(ruolo: string): boolean {
+  return ruolo === "Admin" || ruolo === "BackOffice" || ruolo === "ConsulenteSenior";
+}
+
+export function puoModificareOperazione(utente: Pick<UtenteClub, "ruolo">, op: OperazionePerPermessi): boolean {
+  return puoCreareOperazioni(utente.ruolo) && !STATI_CHIUSI.includes(op.stato);
+}
+
+export function puoInviareInRevisione(utente: Pick<UtenteClub, "id" | "ruolo">, op: OperazionePerPermessi): boolean {
+  return op.stato === "bozza" && (op.creatoDaUserId === utente.id || puoModificareOperazione(utente, op));
+}
+
+export function puoDecidereOperazioni(ruolo: string): boolean {
+  return ruolo === "Admin";
+}
+
+export function puoVedereOperazione(utente: Pick<UtenteClub, "visibilita">, op: Pick<OperazionePerPermessi, "stato">): boolean {
+  return utente.visibilita === "tutti" || op.stato === "pubblicata";
+}
+
+// Stati che l'utente puo' vedere nel catalogo (filtro per il database).
+export function statiOperazioniVisibili(utente: Pick<UtenteClub, "visibilita">): string[] | null {
+  return utente.visibilita === "tutti" ? null : ["pubblicata"];
+}

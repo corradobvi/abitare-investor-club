@@ -5,6 +5,7 @@
 // referenteDefaultUserId = id dell'utente CRM "Andrea Passerini", letto dal
 // CRM con l'utente di sola lettura (CRM_LETTURA_DATABASE_URL). Se gli utenti
 // trovati non sono esattamente uno, lo script si ferma senza scrivere nulla.
+// Il CRM si legge solo se referenteDefaultUserId non c'e' ancora.
 //
 // Uso: npm run db:impostazioni
 import { PrismaClient } from "@prisma/client";
@@ -42,7 +43,7 @@ async function main() {
       criterioRuoli: "Investitore",
       criterioTag: "Investimento",
       criterioLinea: "Investimenti",
-      referenteDefaultUserId: await idReferenteDefault(),
+      referenteDefaultUserId: idReferenteDefault,
       portaleClienteAttivo: "false",
       // Indirizzo pubblico del portale: base dei link d'invito (/c/<token>).
       urlPubblicoPortale: "http://localhost:3000",
@@ -60,13 +61,27 @@ async function main() {
       messaggioInvitoNuoviWhatsApp:
         "Ciao, ti segnalo l'AbitaRE Investor Club: un'area riservata in cui selezioniamo operazioni di " +
         "investimento immobiliare adatte al profilo di ciascuno. Se ti interessa, registrati qui: {link}",
+      // Avvertenza fissa nelle schede delle operazioni.
+      // Uguale a TESTO_AVVERTENZA_PREDEFINITO in src/lib/messaggio-proposta.ts.
+      testoAvvertenzaOperazioni:
+        "I rendimenti indicati sono stime e non sono garantiti. Ogni investimento immobiliare comporta rischi, " +
+        "inclusa la possibile perdita parziale o totale del capitale investito.",
+      // Testo del legale per le operazioni in quote: lo compila l'Admin.
+      // Finche' e' vuoto le operazioni in quote non si possono pubblicare.
+      testoLegaleQuote: "",
+      // Messaggio WhatsApp per proporre un'operazione: {nome}, {operazione}, {link}.
+      // Uguale a MESSAGGIO_PROPOSTA_PREDEFINITO in src/lib/messaggio-proposta.ts.
+      messaggioPropostaOperazioneWhatsApp:
+        "Ciao {nome}, abbiamo selezionato un'operazione che potrebbe interessarti: {operazione}. Se vuoi ne " +
+        "parliamo insieme, oppure scopri di più nella tua area riservata: {link}",
     };
-    for (const [chiave, valore] of Object.entries(iniziali)) {
+    for (const [chiave, iniziale] of Object.entries(iniziali)) {
       const esistente = await prisma.clubImpostazione.findUnique({ where: { chiave } });
       if (esistente) {
         console.log(`${chiave}: gia' presente, lasciata com'e'`);
         continue;
       }
+      const valore = typeof iniziale === "function" ? await iniziale() : iniziale;
       await prisma.clubImpostazione.create({ data: { chiave, valore } });
       console.log(`${chiave}: creata`);
     }

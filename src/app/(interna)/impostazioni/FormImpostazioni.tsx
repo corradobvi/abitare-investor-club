@@ -1,11 +1,15 @@
 "use client";
 import { useState, useTransition } from "react";
 import { componiMessaggioInvito, haSegnapostoLink } from "@/lib/messaggio-invito";
+import { componiMessaggioProposta } from "@/lib/messaggio-proposta";
 import type { OpzioneReferente } from "@/lib/referenti";
 import {
   salvaMessaggioInvito,
   salvaMessaggioInvitoNuovi,
+  salvaMessaggioProposta,
   salvaReferenteDefault,
+  salvaTestoAvvertenza,
+  salvaTestoLegaleQuote,
   salvaUrlInformativa,
 } from "./azioni";
 
@@ -16,6 +20,9 @@ type Props = {
   urlPortale: string;
   messaggioNuovi: string;
   urlInformativa: string;
+  avvertenza: string;
+  testoLegale: string;
+  messaggioProposta: string;
 };
 
 type Avviso = { tipo: "ok" | "errore"; testo: string } | null;
@@ -65,6 +72,9 @@ export default function FormImpostazioni(props: Props) {
     messaggioNuovi: props.messaggioNuovi,
     urlInformativa: props.urlInformativa,
     referente: props.referenteDefault,
+    avvertenza: props.avvertenza,
+    testoLegale: props.testoLegale,
+    messaggioProposta: props.messaggioProposta,
   });
   const [salvati, setSalvati] = useState(valori);
   const [avvisi, setAvvisi] = useState<Record<keyof typeof valori, Avviso>>({
@@ -72,6 +82,9 @@ export default function FormImpostazioni(props: Props) {
     messaggioNuovi: null,
     urlInformativa: null,
     referente: null,
+    avvertenza: null,
+    testoLegale: null,
+    messaggioProposta: null,
   });
   const [inCorso, avvia] = useTransition();
 
@@ -97,7 +110,8 @@ export default function FormImpostazioni(props: Props) {
     });
   }
 
-  function renderPulsante(k: keyof typeof valori, testo: string, azione: Salvataggio, testoOk: string, bloccato = false) {
+  // vuotoAmmesso: il testo legale delle quote si puo' svuotare.
+  function renderPulsante(k: keyof typeof valori, testo: string, azione: Salvataggio, testoOk: string, bloccato = false, vuotoAmmesso = false) {
     const invariato = (k === "referente" ? valori[k] : valori[k].trim()) === salvati[k];
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", marginTop: 14 }}>
@@ -105,7 +119,7 @@ export default function FormImpostazioni(props: Props) {
           type="button"
           className="pulsante"
           onClick={() => salva(k, azione, testoOk)}
-          disabled={inCorso || bloccato || invariato || !valori[k]}
+          disabled={inCorso || bloccato || invariato || (!vuotoAmmesso && !valori[k])}
         >
           {testo}
         </button>
@@ -159,6 +173,40 @@ export default function FormImpostazioni(props: Props) {
         componiMessaggioInvito(valori.messaggioNuovi, null, `${base}/entra/esempio`),
         salvaMessaggioInvitoNuovi,
       )}
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Avvertenza nelle schede delle operazioni</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Riquadro fisso in ogni scheda operazione e nell&apos;anteprima per il cliente.
+        </p>
+        <textarea className="campo" rows={4} value={valori.avvertenza} onChange={(e) => cambia("avvertenza", e.target.value)} />
+        {renderPulsante("avvertenza", "Salva avvertenza", salvaTestoAvvertenza, "Avvertenza salvata.")}
+      </section>
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Testo legale per le operazioni in quote</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Il testo approvato dal legale, mostrato sotto l&apos;avvertenza nelle operazioni in quote.{" "}
+          <strong>Finché è vuoto, le operazioni in quote non si possono pubblicare.</strong>
+        </p>
+        <textarea className="campo" rows={8} value={valori.testoLegale} onChange={(e) => cambia("testoLegale", e.target.value)} />
+        {renderPulsante("testoLegale", "Salva testo legale", salvaTestoLegaleQuote, "Testo legale salvato.", false, true)}
+      </section>
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Messaggio WhatsApp per proporre un&apos;operazione</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          È il testo di &quot;Proponi su WhatsApp&quot; tra gli investitori compatibili. Scrivi <strong>{"{nome}"}</strong>,{" "}
+          <strong>{"{operazione}"}</strong> (il titolo) e <strong>{"{link}"}</strong> (il link personale del cliente: se
+          non ce l&apos;ha, la frase che lo contiene si toglie da sola). Anteprima con il nome d&apos;esempio &quot;{NOME_ESEMPIO}&quot;.
+        </p>
+        <textarea className="campo" rows={5} value={valori.messaggioProposta} onChange={(e) => cambia("messaggioProposta", e.target.value)} />
+        <div className="etichetta" style={{ marginTop: 14 }}>Anteprima, cliente con link personale</div>
+        {renderAnteprima(componiMessaggioProposta(valori.messaggioProposta, NOME_ESEMPIO, "Trilocale in Albaro", `${base}/c/esempio`))}
+        <div className="etichetta" style={{ marginTop: 10 }}>Anteprima, cliente senza link</div>
+        {renderAnteprima(componiMessaggioProposta(valori.messaggioProposta, NOME_ESEMPIO, "Trilocale in Albaro", null))}
+        {renderPulsante("messaggioProposta", "Salva messaggio", salvaMessaggioProposta, "Messaggio salvato.", !valori.messaggioProposta.includes("{operazione}"))}
+      </section>
 
       <section className="riquadro">
         <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Informativa privacy</h2>

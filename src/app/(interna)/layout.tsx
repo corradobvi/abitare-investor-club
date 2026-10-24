@@ -2,6 +2,7 @@ import Link from "next/link";
 import { signOut } from "@/lib/auth";
 import { puoGestireImpostazioni, utenteConAccesso } from "@/lib/permessi";
 import { ROLE_LABELS } from "@/lib/roles";
+import MenuPrincipale from "./MenuPrincipale";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ export default async function AreaInternaLayout({ children }: { children: React.
             </span>
             <span className="tenue" style={{ letterSpacing: 2, fontSize: 11 }}>INVESTOR CLUB</span>
           </Link>
+          <MenuPrincipale />
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, flexWrap: "wrap" }}>
             {puoGestireImpostazioni(utente.ruolo) ? (
               <Link href="/impostazioni" style={{ textDecoration: "none", fontWeight: 600 }}>

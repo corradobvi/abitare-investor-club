@@ -7,6 +7,9 @@ const nextConfig = {
   // Il Club non usa immagini ottimizzate: servizio /_next/image spento (via
   // anche l'esposizione alle falle di sharp segnalate da npm audit).
   images: { unoptimized: true },
+  // Caricamento di foto (fino a 10 MB) e documenti (fino a 20 MB) delle
+  // operazioni con le azioni server: i limiti veri sono in src/lib/archivio.ts.
+  experimental: { serverActions: { bodySizeLimit: "21mb" } },
   async headers() {
     return [
       {

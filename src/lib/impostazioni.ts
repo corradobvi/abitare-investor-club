@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
+import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 
 // Impostazioni del Club (tabella ClubImpostazione, chiave/valore). Le chiavi
 // sono in italiano camelCase; i valori iniziali li scrive
@@ -20,6 +21,15 @@ export const CHIAVI_IMPOSTAZIONI = [
   "urlInformativaPrivacy",
   // Messaggio WhatsApp con il link d'invito per nuovi investitori, segnaposto {link}.
   "messaggioInvitoNuoviWhatsApp",
+  // Avvertenza fissa nelle schede delle operazioni (rendimenti stimati, rischi).
+  "testoAvvertenzaOperazioni",
+  // Testo approvato dal legale per le operazioni in quote. Vuoto = le
+  // operazioni in quote non si possono pubblicare.
+  "testoLegaleQuote",
+  // Messaggio WhatsApp per proporre un'operazione, segnaposto {nome},
+  // {operazione} e {link} (la frase con {link} si omette se il cliente non ha
+  // un link personale).
+  "messaggioPropostaOperazioneWhatsApp",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];
@@ -41,6 +51,8 @@ const PREDEFINITI: Partial<Impostazioni> = {
   modalitaNuoviInvestitori: "lista-temporanea",
   urlInformativaPrivacy: URL_INFORMATIVA_PRIVACY_PREDEFINITO,
   messaggioInvitoNuoviWhatsApp: MESSAGGIO_INVITO_NUOVI_PREDEFINITO,
+  testoAvvertenzaOperazioni: TESTO_AVVERTENZA_PREDEFINITO,
+  messaggioPropostaOperazioneWhatsApp: MESSAGGIO_PROPOSTA_PREDEFINITO,
 };
 
 export async function leggiImpostazioni(): Promise<Impostazioni> {
@@ -59,6 +71,9 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "referenteDefaultUserId",
   "urlInformativaPrivacy",
   "messaggioInvitoNuoviWhatsApp",
+  "testoAvvertenzaOperazioni",
+  "testoLegaleQuote",
+  "messaggioPropostaOperazioneWhatsApp",
 ] as const;
 
 export type ImpostazioneModificabile = (typeof IMPOSTAZIONI_MODIFICABILI)[number];

@@ -7,6 +7,7 @@ import { invitoAttivo, invitoMostrato } from "@/lib/inviti";
 import { opzioniReferente } from "@/lib/referenti";
 import type { ClubContattoNuovo } from "@prisma/client";
 import { data } from "@/lib/date";
+import { operazioniCompatibili, type OperazioneCompatibile } from "@/lib/operazioni/compatibili";
 import ModuloContatto from "../../ModuloContatto";
 import PulsantiConferma from "../../PulsantiConferma";
 import SchedaProfilo from "./SchedaProfilo";
@@ -20,6 +21,21 @@ function renderDato(etichetta: string, valore: React.ReactNode) {
       <div className="etichetta">{etichetta}</div>
       <div style={{ fontSize: 15, overflowWrap: "anywhere" }}>{valore || <span className="tenue">—</span>}</div>
     </div>
+  );
+}
+
+function renderOperazione(o: OperazioneCompatibile) {
+  return (
+    <li key={o.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <Link href={`/operazioni/${o.id}`} style={{ fontWeight: 600, textDecoration: "none" }}>
+          {o.titolo} <span className="tenue" style={{ fontWeight: 400, fontSize: 13 }}>· {o.codice}</span>
+        </Link>
+        <span className="badge scuro" style={{ fontSize: 12 }}>{o.punteggio}/100</span>
+      </div>
+      {o.positivi.length ? <div style={{ fontSize: 13 }}>✓ {o.positivi.join(" · ")}</div> : null}
+      {o.attenzione.length ? <div style={{ fontSize: 13, color: "#8a4b1f" }}>⚠ {o.attenzione.join(" · ")}</div> : null}
+    </li>
   );
 }
 
@@ -37,7 +53,10 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) notFound();
   const { investitore, referente, profilo, impostazioni } = scheda;
-  const link = await invitoAttivo(investitore.rif);
+  const [link, compatibili] = await Promise.all([
+    invitoAttivo(investitore.rif),
+    operazioniCompatibili(utente, rispostePerProfilo(profilo)),
+  ]);
 
   async function renderIntestazioneNuovo(contatto: ClubContattoNuovo) {
     const sceglie = puoScegliereReferente(utente.ruolo);
@@ -121,6 +140,18 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
         }}
         invitoIniziale={link ? invitoMostrato(link, investitore, impostazioni) : null}
       />
+
+      <section className="riquadro" style={{ marginTop: 20 }}>
+        <h2 className="titolo" style={{ fontSize: 22 }}>Operazioni compatibili ({compatibili.length})</h2>
+        <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
+          Solo operazioni pubblicate, ordinate per punteggio. Rendimenti stimati, mai garantiti.
+        </p>
+        {compatibili.length ? (
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(renderOperazione)}</ul>
+        ) : (
+          <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessuna operazione pubblicata è compatibile con il profilo.</p>
+        )}
+      </section>
     </main>
   );
 }

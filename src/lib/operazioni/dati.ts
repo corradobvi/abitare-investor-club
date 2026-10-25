@@ -16,7 +16,7 @@ import {
   statiOperazioniVisibili,
   type UtenteClub,
 } from "@/lib/permessi";
-import { leggiImporto, leggiPercentuale } from "@/lib/numeri";
+import { leggiCambio, leggiImporto, leggiPercentuale } from "@/lib/numeri";
 import { caricaFile, eliminaFile, nuovaChiave, verificaFile, type GenereFile } from "@/lib/archivio";
 import type { Rif } from "@/lib/riferimento";
 import {
@@ -25,6 +25,7 @@ import {
   PARTNER,
   TIPI,
   eRendita,
+  inItalia,
   motiviBloccoPubblicazione,
   type AzioneFlusso,
   type OperazioneDati,
@@ -62,6 +63,13 @@ export function datiOperazione(o: ClubOperazione): OperazioneDati {
     puntiDiForza: o.puntiDiForza,
     rischi: o.rischi,
     scadenzaRaccolta: o.scadenzaRaccolta?.toISOString() ?? null,
+    valutaLocale: o.valutaLocale,
+    cambioEuro: num(o.cambioEuro),
+    sviluppatore: o.sviluppatore,
+    consegnaPrevista: o.consegnaPrevista?.toISOString() ?? null,
+    pianoPagamento: o.pianoPagamento,
+    goldenVisa: o.goldenVisa,
+    noteFiscali: o.noteFiscali,
     referenteUserId: o.referenteUserId,
     stato: o.stato,
     creatoDaUserId: o.creatoDaUserId,
@@ -149,6 +157,14 @@ export type InputOperazione = {
   puntiDiForza: string;
   rischi: string;
   scadenzaRaccolta: string; // AAAA-MM-GG o vuoto
+  // Sezione estero (ignorata se il paese e' Italia).
+  valutaLocale: string;
+  cambioEuro: string;
+  sviluppatore: string;
+  consegnaPrevista: string; // AAAA-MM-GG o vuoto
+  pianoPagamento: string;
+  goldenVisa: string; // "" | "si" | "no"
+  noteFiscali: string;
   referenteUserId: string;
 };
 
@@ -156,8 +172,8 @@ export type Errori = Partial<Record<keyof InputOperazione, string>>;
 
 type CampiSalvati = Omit<
   OperazioneDati,
-  "id" | "codice" | "stato" | "creatoDaUserId" | "pubblicataIl" | "scadenzaRaccolta"
-> & { scadenzaRaccolta: Date | null };
+  "id" | "codice" | "stato" | "creatoDaUserId" | "pubblicataIl" | "scadenzaRaccolta" | "consegnaPrevista"
+> & { scadenzaRaccolta: Date | null; consegnaPrevista: Date | null };
 
 const MASSIMO_TESTO_BREVE = 120;
 const MASSIMO_TESTO_LUNGO = 5000;
@@ -178,6 +194,24 @@ function leggiTesti(input: Partial<InputOperazione>, errori: Errori) {
     descrizione: testo("descrizione", MASSIMO_TESTO_LUNGO),
     puntiDiForza: testo("puntiDiForza", MASSIMO_TESTO_LUNGO),
     rischi: testo("rischi", MASSIMO_TESTO_LUNGO),
+    sviluppatore: testo("sviluppatore", MASSIMO_TESTO_BREVE),
+    pianoPagamento: testo("pianoPagamento", MASSIMO_TESTO_LUNGO),
+    noteFiscali: testo("noteFiscali", MASSIMO_TESTO_LUNGO),
+  };
+}
+
+// Sezione estero: valuta (codice di 3 lettere), cambio e Golden Visa.
+function leggiEstero(input: Partial<InputOperazione>, errori: Errori) {
+  const valuta = typeof input.valutaLocale === "string" ? input.valutaLocale.trim().toUpperCase() : "";
+  if (valuta && !/^[A-Z]{3}$/.test(valuta)) errori.valutaLocale = "Scrivi il codice di 3 lettere (es. AED).";
+  const cambioEuro = leggiCambio(typeof input.cambioEuro === "string" ? input.cambioEuro : "");
+  if (Number.isNaN(cambioEuro)) errori.cambioEuro = "Scrivi un numero positivo con al massimo 4 decimali (es. 4,0125).";
+  const gv = input.goldenVisa;
+  if (gv !== undefined && gv !== "" && gv !== "si" && gv !== "no") errori.goldenVisa = "Scegli un valore.";
+  return {
+    valutaLocale: valuta || null,
+    cambioEuro: Number.isNaN(cambioEuro) ? null : cambioEuro,
+    goldenVisa: gv === "si" ? true : gv === "no" ? false : null,
   };
 }
 
@@ -220,13 +254,13 @@ function leggiNumeri(input: Partial<InputOperazione>, errori: Errori) {
   };
 }
 
-function leggiData(testo: unknown, errori: Errori): Date | null {
+function leggiData(testo: unknown, errori: Errori, campo: "scadenzaRaccolta" | "consegnaPrevista"): Date | null {
   const t = typeof testo === "string" ? testo.trim() : "";
   if (!t) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
   const d = m ? new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)) : null;
   if (!d || Number.isNaN(+d) || d.getUTCDate() !== Number(m![3])) {
-    errori.scadenzaRaccolta = "Data non valida.";
+    errori[campo] = "Data non valida.";
     return null;
   }
   return d;
@@ -241,7 +275,9 @@ async function leggiInput(
   const errori: Errori = {};
   const testi = leggiTesti(input, errori);
   const numeri = leggiNumeri(input, errori);
-  const scadenzaRaccolta = leggiData(input.scadenzaRaccolta, errori);
+  const scadenzaRaccolta = leggiData(input.scadenzaRaccolta, errori, "scadenzaRaccolta");
+  const consegnaPrevista = leggiData(input.consegnaPrevista, errori, "consegnaPrevista");
+  const estero = leggiEstero(input, errori);
   const scelta = <T extends string>(k: keyof InputOperazione, opzioni: { valore: T }[]): T | null => {
     const v = input[k];
     const o = opzioni.find((x) => x.valore === v);
@@ -262,6 +298,7 @@ async function leggiInput(
   if (Object.keys(errori).length > 0) return { errori };
   const quota = formula === "quota";
   const rendita = eRendita(tipo!);
+  const fuori = !inItalia(testi.paese);
   return {
     campi: {
       ...testi,
@@ -280,6 +317,13 @@ async function leggiInput(
       formula: formula!,
       finanziabile: input.finanziabile === true,
       scadenzaRaccolta,
+      valutaLocale: fuori ? estero.valutaLocale : null,
+      cambioEuro: fuori ? estero.cambioEuro : null,
+      sviluppatore: fuori ? testi.sviluppatore : null,
+      consegnaPrevista: fuori ? consegnaPrevista : null,
+      pianoPagamento: fuori ? testi.pianoPagamento : null,
+      goldenVisa: fuori ? estero.goldenVisa : null,
+      noteFiscali: fuori ? testi.noteFiscali : null,
       referenteUserId,
     },
   };
@@ -352,6 +396,7 @@ export async function modificaOperazione(
     ...prima,
     ...letto.campi,
     scadenzaRaccolta: letto.campi.scadenzaRaccolta?.toISOString() ?? null,
+    consegnaPrevista: letto.campi.consegnaPrevista?.toISOString() ?? null,
   };
   // Un'operazione gia' pubblicata deve restare pubblicabile.
   if (STATI_CON_REGOLE_DI_PUBBLICAZIONE.includes(attuale.stato)) {

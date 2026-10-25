@@ -2,7 +2,7 @@
 // Nessun import di server o database.
 import type { InputOperazione } from "@/lib/operazioni/dati";
 import type { OperazioneDati } from "@/lib/operazioni/definizioni";
-import { intero } from "@/lib/numeri";
+import { cambio, intero } from "@/lib/numeri";
 
 export function inputVuoto(referenteUserId: string): InputOperazione {
   return {
@@ -33,6 +33,13 @@ export function inputVuoto(referenteUserId: string): InputOperazione {
     puntiDiForza: "",
     rischi: "",
     scadenzaRaccolta: "",
+    valutaLocale: "",
+    cambioEuro: "",
+    sviluppatore: "",
+    consegnaPrevista: "",
+    pianoPagamento: "",
+    goldenVisa: "",
+    noteFiscali: "",
     referenteUserId,
   };
 }
@@ -70,6 +77,13 @@ export function inputDaOperazione(op: OperazioneDati): InputOperazione {
     puntiDiForza: op.puntiDiForza ?? "",
     rischi: op.rischi ?? "",
     scadenzaRaccolta: op.scadenzaRaccolta ? op.scadenzaRaccolta.slice(0, 10) : "",
+    valutaLocale: op.valutaLocale ?? "",
+    cambioEuro: cambio(op.cambioEuro),
+    sviluppatore: op.sviluppatore ?? "",
+    consegnaPrevista: op.consegnaPrevista ? op.consegnaPrevista.slice(0, 10) : "",
+    pianoPagamento: op.pianoPagamento ?? "",
+    goldenVisa: op.goldenVisa === null ? "" : op.goldenVisa ? "si" : "no",
+    noteFiscali: op.noteFiscali ?? "",
     referenteUserId: op.referenteUserId ?? "",
   };
 }

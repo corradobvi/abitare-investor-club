@@ -7,11 +7,13 @@
 //       breve) vuole rendita o entrambi;
 //    b) area: Italia vuole area italia o entrambi; estero vuole estero o entrambi;
 //    c) capitale: il massimo della fascia del cliente >= ticket minimo;
-//    d) formula: chi ha scelto "intera" esclude le quote e viceversa.
+//    d) formula (solo flipping): chi ha scelto "intera" esclude le quote e
+//       viceversa.
 // 2. Punteggio: 100, meno le penalita' motivate (rendimento sotto la fascia
 //    desiderata, durata oltre l'orizzonte, tipo di affitto diverso, finanziamento
 //    necessario ma operazione non finanziabile, capitale disponibile dopo la
 //    scadenza della raccolta).
+// 3. Golden Visa (solo estero): nota positiva o di attenzione, senza penalita'.
 // Si valutano solo le risposte presenti: con un profilo incompleto la
 // compatibilita' e' parziale e lo si dice.
 //
@@ -43,6 +45,7 @@ export type OperazionePerCompatibilita = Pick<
   | "durataStimataMesi"
   | "finanziabile"
   | "scadenzaRaccolta"
+  | "goldenVisa"
 >;
 
 // Massimo della fascia di capitale (Infinity = nessun limite).
@@ -128,9 +131,9 @@ export function compatibilita(
     else esclusioni.push(`Capitale ${fascia}, sotto il ticket minimo di ${euro(ticket)}`);
   }
 
-  // d) formula
+  // d) formula (solo flipping: la domanda riguarda il flipping)
   const formula = testo(r.formulaFlipping);
-  if (formula === "intera" || formula === "quota") {
+  if (!rendita && (formula === "intera" || formula === "quota")) {
     if (formula === op.formula) positivi.push(formula === "quota" ? "Preferisce le quote" : "Preferisce operazioni intere");
     else esclusioni.push(formula === "intera" ? "Vuole solo operazioni intere, questa è in quote" : "Vuole solo quote, questa è un'operazione intera");
   }
@@ -203,6 +206,12 @@ export function compatibilita(
           `dopo la scadenza della raccolta (${data(scadenza)})`,
       );
     }
+  }
+
+  // Golden Visa: conta solo se il cliente ha detto di essere interessato.
+  if (r.interesseGoldenVisa === true && !inItalia(op.paese) && op.goldenVisa !== null) {
+    if (op.goldenVisa) positivi.push("Dà accesso alla Golden Visa");
+    else attenzione.push("Interessato alla Golden Visa, ma questa operazione non la prevede");
   }
 
   if (parziale) attenzione.unshift(AVVISO_PARZIALE);

@@ -18,6 +18,7 @@ import {
   type InputOperazione,
 } from "@/lib/operazioni/dati";
 import { AZIONI_FLUSSO, type AzioneFlusso } from "@/lib/operazioni/definizioni";
+import { disiscritti } from "@/lib/disiscrizioni";
 
 type Esito = { ok: true } | { ok: false; errore: string; motivi?: string[] };
 
@@ -85,13 +86,16 @@ export async function spostaFileOperazione(operazioneId: string, fileId: string,
 }
 
 // Clic su "Proponi su WhatsApp": registra la proposta (solo operazioni
-// pubblicate e investitori visibili all'utente). WhatsApp lo apre il browser.
+// pubblicate, investitori visibili all'utente e non disiscritti). WhatsApp lo apre il browser.
 export async function registraPropostaOperazione(operazioneId: string, chiave: string): Promise<Esito> {
   const utente = await utenteConAccesso();
   const trovata = await operazionePerUtente(utente, operazioneId);
   if (!trovata || trovata.op.stato !== "pubblicata") return { ok: false, errore: "Operazione non proponibile." };
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) return { ok: false, errore: "Investitore non trovato o non visibile per il tuo ruolo." };
+  if ((await disiscritti([scheda.investitore.rif])).size > 0) {
+    return { ok: false, errore: "L'investitore ha chiesto di non ricevere più proposte." };
+  }
   await registraProposta(utente, operazioneId, scheda.investitore.rif);
   aggiorna(operazioneId);
   return { ok: true };

@@ -12,6 +12,7 @@ import {
   costoTotale,
   eRendita,
   etichetta,
+  inItalia,
   margineLordoStimato,
   motiviBloccoPubblicazione,
   statoMostrato,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/operazioni/definizioni";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import { FASI } from "@/lib/profilo/fase";
-import { euro, percentuale } from "@/lib/numeri";
+import { cambio, euro, percentuale } from "@/lib/numeri";
 import { data, dataOra } from "@/lib/date";
 import PulsantiFlusso from "./PulsantiFlusso";
 import PropostaWhatsapp from "./PropostaWhatsapp";
@@ -124,6 +125,44 @@ function renderAvvertenza(testo: string, legale: string | null, quota: boolean) 
   );
 }
 
+function goldenVisa(v: boolean | null): string {
+  return v === null ? "Non indicato" : v ? "Sì" : "No";
+}
+
+function cambioMostrato(op: OperazioneDati): string {
+  if (!op.valutaLocale) return "—";
+  return op.cambioEuro === null ? op.valutaLocale : `1 € = ${cambio(op.cambioEuro)} ${op.valutaLocale}`;
+}
+
+// Sezione estero: solo per le operazioni fuori dall'Italia. Nell'anteprima
+// cliente i dati essenziali, nella scheda completa anche i testi.
+function renderEstero(op: OperazioneDati, completa: boolean) {
+  if (inItalia(op.paese)) return null;
+  return (
+    <section className="riquadro">
+      <h2 className="titolo" style={{ fontSize: completa ? 22 : 18, marginBottom: 14 }}>Estero</h2>
+      <div className="griglia-dati">
+        {renderDato("Valuta e cambio", cambioMostrato(op), op.cambioEuro !== null ? "di riferimento, importi in euro" : undefined)}
+        {renderDato("Sviluppatore / costruttore", op.sviluppatore)}
+        {renderDato("Consegna prevista", op.consegnaPrevista ? data(op.consegnaPrevista) : "—")}
+        {renderDato("Golden Visa", goldenVisa(op.goldenVisa))}
+      </div>
+      {op.pianoPagamento?.trim() ? (
+        <>
+          <h3 style={{ fontSize: 15, margin: "16px 0 6px" }}>Piano di pagamento</h3>
+          <div className="testo-lungo">{op.pianoPagamento}</div>
+        </>
+      ) : null}
+      {completa && op.noteFiscali?.trim() ? (
+        <>
+          <h3 style={{ fontSize: 15, margin: "16px 0 6px" }}>Fiscalità e costi locali</h3>
+          <div className="testo-lungo">{op.noteFiscali}</div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 function fase(f: string): string {
   return FASI.find((x) => x.valore === f)?.etichetta ?? f;
 }
@@ -160,6 +199,8 @@ export default async function SchedaOperazionePage({
           <span className="badge">{etichetta(FORMULE, op.formula)}</span>
           <span className="badge sabbia">{partnerMostrato(op)}</span>
           {op.finanziabile ? <span className="badge">Finanziabile</span> : null}
+          {inItalia(op.paese) ? null : <span className="badge">Estero</span>}
+          {op.goldenVisa ? <span className="badge ok">Golden Visa</span> : null}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
           {puoModificareOperazione(utente, op) ? (
@@ -232,6 +273,7 @@ export default async function SchedaOperazionePage({
               {renderDato("Formula", etichetta(FORMULE, op.formula))}
               {renderDato("Partner", partnerMostrato(op))}
             </div>
+            {renderEstero(op, false)}
             {renderAvvertenza(avvertenza, imp.testoLegaleQuote, quota)}
           </div>
         </article>
@@ -352,6 +394,8 @@ export default async function SchedaOperazionePage({
               </>
             ) : null}
           </section>
+
+          {renderEstero(op, true)}
 
           <section className="riquadro">
             <h2 className="titolo" style={{ fontSize: 22, marginBottom: 10 }}>Scenari di rendimento</h2>

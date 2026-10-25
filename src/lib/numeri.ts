@@ -41,3 +41,18 @@ export function leggiPercentuale(testo: string): number | null {
   if (t === "") return null;
   return /^-?\d{1,3}(\.\d{1,2})?$/.test(t) ? Number(t) : NaN;
 }
+
+const CAMBIO = new Intl.NumberFormat("it-IT", { minimumFractionDigits: 0, maximumFractionDigits: 4, useGrouping: "always" });
+
+// "4,0125" (cambio valuta per 1 euro); "" se manca.
+export function cambio(n: number | null | undefined): string {
+  return n === null || n === undefined ? "" : CAMBIO.format(n);
+}
+
+// Cambio scritto a mano in formato italiano ("4,0125", "17.250") -> numero
+// positivo con al massimo quattro decimali. null se vuoto; NaN se non valido.
+export function leggiCambio(testo: string): number | null {
+  const t = testo.replace(/[\s.]/g, "").replace(",", ".");
+  if (t === "") return null;
+  return /^\d{1,7}(\.\d{1,4})?$/.test(t) && Number(t) > 0 ? Number(t) : NaN;
+}

@@ -198,11 +198,14 @@ export default function FormImpostazioni(props: Props) {
         <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
           È il testo di &quot;Proponi su WhatsApp&quot; tra gli investitori compatibili. Scrivi <strong>{"{nome}"}</strong>,{" "}
           <strong>{"{operazione}"}</strong> (il titolo) e <strong>{"{link}"}</strong> (il link personale del cliente: se
-          non ce l&apos;ha, la frase che lo contiene si toglie da sola). Anteprima con il nome d&apos;esempio &quot;{NOME_ESEMPIO}&quot;.
+          non ce l&apos;ha, la frase che lo contiene si toglie da sola). Quando il portale clienti è attivo, in fondo si aggiunge
+          da sola la riga con il link per non ricevere più proposte. Anteprima con il nome d&apos;esempio &quot;{NOME_ESEMPIO}&quot;.
         </p>
         <textarea className="campo" rows={5} value={valori.messaggioProposta} onChange={(e) => cambia("messaggioProposta", e.target.value)} />
-        <div className="etichetta" style={{ marginTop: 14 }}>Anteprima, cliente con link personale</div>
-        {renderAnteprima(componiMessaggioProposta(valori.messaggioProposta, NOME_ESEMPIO, "Trilocale in Albaro", `${base}/c/esempio`))}
+        <div className="etichetta" style={{ marginTop: 14 }}>Anteprima, cliente con link personale (portale attivo)</div>
+        {renderAnteprima(
+          componiMessaggioProposta(valori.messaggioProposta, NOME_ESEMPIO, "Trilocale in Albaro", `${base}/c/esempio`, `${base}/stop/esempio`),
+        )}
         <div className="etichetta" style={{ marginTop: 10 }}>Anteprima, cliente senza link</div>
         {renderAnteprima(componiMessaggioProposta(valori.messaggioProposta, NOME_ESEMPIO, "Trilocale in Albaro", null))}
         {renderPulsante("messaggioProposta", "Salva messaggio", salvaMessaggioProposta, "Messaggio salvato.", !valori.messaggioProposta.includes("{operazione}"))}

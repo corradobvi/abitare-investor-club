@@ -74,6 +74,20 @@ model ClubLinkInvito {
   @@index([contattoNuovoId])
 }
 
+// Disiscrizione dalle proposte di operazioni: un token personale per
+// investitore (link /stop/<token> nel messaggio WhatsApp, solo a portale
+// attivo). disiscrittoIl valorizzato = non riceve piu' proposte: non compare
+// tra i compatibili e non gli si puo' proporre nulla. Lo decide solo il
+// cliente, dalla stessa pagina puo' anche riattivarsi.
+model ClubDisiscrizione {
+  id              String    @id @default(cuid())
+  token           String    @unique // casuale, sicuro, almeno 32 caratteri
+  clienteId       String?   @unique
+  contattoNuovoId String?   @unique
+  disiscrittoIl   DateTime?
+  creatoIl        DateTime  @default(now())
+}
+
 // Diario degli eventi del Club, per investitore. Gli eventi generali
 // (impostazione-modificata) non hanno ne' clienteId ne' contattoNuovoId.
 // Gli eventi delle operazioni hanno operazioneId (e, per operazione-proposta,
@@ -83,7 +97,7 @@ model ClubEvento {
   clienteId       String?
   contattoNuovoId String?
   operazioneId    String?
-  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta | proposte-disattivate | proposte-riattivate
   dati            Json?
   creatoIl        DateTime @default(now())
 
@@ -132,6 +146,16 @@ model ClubOperazione {
   puntiDiForza     String?
   rischi           String? // obbligatorio per pubblicare
   scadenzaRaccolta DateTime?
+
+  // Sezione estero: solo per paese diverso da Italia (altrimenti vuoti).
+  // Gli importi restano in euro; cambioEuro = unita' di valuta locale per 1 euro.
+  valutaLocale     String? // codice ISO, es. AED
+  cambioEuro       Decimal?  @db.Decimal(12, 4)
+  sviluppatore     String?
+  consegnaPrevista DateTime?
+  pianoPagamento   String?
+  goldenVisa       Boolean? // null = non indicato
+  noteFiscali      String?
 
   referenteUserId String? // id User del CRM
   stato           String  @default("bozza") // bozza | in-revisione | pubblicata | raccolta-chiusa | conclusa | ritirata

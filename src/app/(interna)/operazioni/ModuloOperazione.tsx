@@ -4,17 +4,20 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import {
   FORMULE,
+  GOLDEN_VISA,
   PAESI_SUGGERITI,
   PARTNER,
   TIPI,
+  VALUTE_SUGGERITE,
   costoTotale,
   eRendita,
+  inItalia,
   margineLordoStimato,
   motiviBloccoPubblicazione,
   ticketMinimo,
   type OperazioneDati,
 } from "@/lib/operazioni/definizioni";
-import { euro, intero, leggiImporto, leggiPercentuale } from "@/lib/numeri";
+import { euro, intero, leggiCambio, leggiImporto, leggiPercentuale } from "@/lib/numeri";
 import type { Errori, InputOperazione } from "@/lib/operazioni/dati";
 import type { OpzioneReferente } from "@/lib/referenti";
 import { salvaNuovaOperazione, salvaOperazione } from "./azioni";
@@ -68,6 +71,13 @@ function comeDati(v: InputOperazione): OperazioneDati {
     puntiDiForza: v.puntiDiForza,
     rischi: v.rischi,
     scadenzaRaccolta: v.scadenzaRaccolta || null,
+    valutaLocale: v.valutaLocale || null,
+    cambioEuro: numero(leggiCambio(v.cambioEuro)),
+    sviluppatore: v.sviluppatore || null,
+    consegnaPrevista: v.consegnaPrevista || null,
+    pianoPagamento: v.pianoPagamento || null,
+    goldenVisa: v.goldenVisa === "si" ? true : v.goldenVisa === "no" ? false : null,
+    noteFiscali: v.noteFiscali || null,
     referenteUserId: v.referenteUserId,
     stato: "bozza",
     creatoDaUserId: "",
@@ -86,6 +96,7 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
   const dati = useMemo(() => comeDati(valori), [valori]);
   const quota = valori.formula === "quota";
   const rendita = eRendita(valori.tipo);
+  const estero = !!valori.paese.trim() && !inItalia(valori.paese);
   const modificato = JSON.stringify(valori) !== JSON.stringify(salvati);
   const requisiti = motiviBloccoPubblicazione(dati, testoLegaleQuotePresente ? "presente" : "");
 
@@ -176,18 +187,28 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
     );
   }
 
-  function renderScelta(k: CampoTesto, etichetta: string, opzioni: { valore: string; etichetta: string }[]) {
+  function renderScelta(k: CampoTesto, etichetta: string, opzioni: { valore: string; etichetta: string }[], obbligatorio = true) {
     return (
       <div key={k}>
-        <label className="etichetta" htmlFor={k}>{etichetta} *</label>
+        <label className="etichetta" htmlFor={k}>{etichetta}{obbligatorio ? " *" : ""}</label>
         <select id={k} className="campo" value={valori[k]} onChange={(e) => cambia(k, e.target.value)}>
-          {valori[k] ? null : <option value="">Scegli…</option>}
+          {valori[k] || !obbligatorio ? null : <option value="">Scegli…</option>}
           {opzioni.map((o) => (
             <option key={o.valore} value={o.valore}>
               {o.etichetta}
             </option>
           ))}
         </select>
+        {renderErrore(k)}
+      </div>
+    );
+  }
+
+  function renderData(k: "scadenzaRaccolta" | "consegnaPrevista", etichetta: string) {
+    return (
+      <div key={k}>
+        <label className="etichetta" htmlFor={k}>{etichetta}</label>
+        <input id={k} type="date" className="campo" value={valori[k]} onChange={(e) => cambia(k, e.target.value)} />
         {renderErrore(k)}
       </div>
     );
@@ -275,11 +296,7 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
             {renderNumero("rendimentoBase", "Rendimento annuo base (%) *", "es. 10,5")}
             {renderNumero("rendimentoOttimista", "Rendimento annuo ottimista (%)", "es. 14")}
             {renderNumero("durataStimataMesi", "Durata stimata (mesi) *", "es. 18")}
-            <div>
-              <label className="etichetta" htmlFor="scadenzaRaccolta">Scadenza della raccolta</label>
-              <input id="scadenzaRaccolta" type="date" className="campo" value={valori.scadenzaRaccolta} onChange={(e) => cambia("scadenzaRaccolta", e.target.value)} />
-              {renderErrore("scadenzaRaccolta")}
-            </div>
+            {renderData("scadenzaRaccolta", "Scadenza della raccolta")}
           </>,
           "Rendimenti sempre stimati, mai garantiti. Con due decimali al massimo.",
         )}
@@ -294,6 +311,27 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
                 {renderImporto("importoImpegnato", "Importo già impegnato")}
               </>,
               "L'importo impegnato per ora si aggiorna a mano.",
+            )
+          : null}
+
+        {estero
+          ? renderSezione(
+              "Estero",
+              <>
+                {renderTesto("valutaLocale", "Valuta locale", { placeholder: "es. AED", lista: "valute" })}
+                {renderNumero("cambioEuro", "Cambio di riferimento (valuta per 1 €)", "es. 4,0125")}
+                {renderTesto("sviluppatore", "Sviluppatore / costruttore")}
+                {renderData("consegnaPrevista", "Consegna prevista")}
+                {renderScelta("goldenVisa", "Golden Visa", GOLDEN_VISA, false)}
+                <datalist id="valute">
+                  {VALUTE_SUGGERITE.map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
+                <div style={{ gridColumn: "1 / -1" }}>{renderArea("pianoPagamento", "Piano di pagamento", "Es. 20% alla firma, 40% durante i lavori, 40% alla consegna.")}</div>
+                <div style={{ gridColumn: "1 / -1" }}>{renderArea("noteFiscali", "Fiscalità e costi locali", "Tasse, costi di registrazione, regole per gli acquirenti stranieri.")}</div>
+              </>,
+              "Solo per le operazioni fuori dall'Italia. Gli importi del modulo restano in euro.",
             )
           : null}
 

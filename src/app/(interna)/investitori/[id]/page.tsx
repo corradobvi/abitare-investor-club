@@ -7,6 +7,7 @@ import { invitoAttivo, invitoMostrato } from "@/lib/inviti";
 import { opzioniReferente } from "@/lib/referenti";
 import type { ClubContattoNuovo } from "@prisma/client";
 import { data } from "@/lib/date";
+import { disiscrizioniPerRif } from "@/lib/disiscrizioni";
 import { operazioniCompatibili, type OperazioneCompatibile } from "@/lib/operazioni/compatibili";
 import ModuloContatto from "../../ModuloContatto";
 import PulsantiConferma from "../../PulsantiConferma";
@@ -53,10 +54,12 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) notFound();
   const { investitore, referente, profilo, impostazioni } = scheda;
-  const [link, compatibili] = await Promise.all([
+  const [link, compatibili, disiscrizioni] = await Promise.all([
     invitoAttivo(investitore.rif),
     operazioniCompatibili(utente, rispostePerProfilo(profilo)),
+    disiscrizioniPerRif([investitore.rif]),
   ]);
+  const disiscrittoIl = disiscrizioni.get(investitore.chiave)?.disiscrittoIl ?? null;
 
   async function renderIntestazioneNuovo(contatto: ClubContattoNuovo) {
     const sceglie = puoScegliereReferente(utente.ruolo);
@@ -146,6 +149,12 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
         <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
           Solo operazioni pubblicate, ordinate per punteggio. Rendimenti stimati, mai garantiti.
         </p>
+        {disiscrittoIl ? (
+          <p className="badge allerta" style={{ display: "block", whiteSpace: "normal", fontWeight: 500, fontSize: 13, padding: "8px 10px", borderRadius: 8, marginTop: 10 }}>
+            Il {data(disiscrittoIl)} ha chiesto di non ricevere più proposte di operazioni: non compare tra gli investitori compatibili e non
+            si possono proporre operazioni. Può riattivare le proposte solo il cliente, dallo stesso link.
+          </p>
+        ) : null}
         {compatibili.length ? (
           <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(renderOperazione)}</ul>
         ) : (

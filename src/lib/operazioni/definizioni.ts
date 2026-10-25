@@ -48,6 +48,16 @@ export const VISIBILITA_FILE: Opzione<VisibilitaFile>[] = [
 // Paesi proposti nel modulo (si puo' scriverne un altro).
 export const PAESI_SUGGERITI = ["Italia", "Emirati Arabi Uniti", "Spagna", "Portogallo", "Grecia"];
 
+// Valute proposte nella sezione estero (si puo' scriverne un'altra).
+export const VALUTE_SUGGERITE = ["AED", "USD", "GBP", "CHF"];
+
+// Golden Visa nel modulo: "" = non indicato.
+export const GOLDEN_VISA: Opzione<"" | "si" | "no">[] = [
+  { valore: "", etichetta: "Non indicato" },
+  { valore: "si", etichetta: "Sì, dà accesso alla Golden Visa" },
+  { valore: "no", etichetta: "No" },
+];
+
 export function etichetta<T extends string>(opzioni: Opzione<T>[], valore: string | null | undefined): string {
   return opzioni.find((o) => o.valore === valore)?.etichetta ?? valore ?? "—";
 }
@@ -97,6 +107,14 @@ export type OperazioneDati = {
   puntiDiForza: string | null;
   rischi: string | null;
   scadenzaRaccolta: string | null; // ISO
+  // Sezione estero (null per le operazioni in Italia).
+  valutaLocale: string | null;
+  cambioEuro: number | null; // unita' di valuta locale per 1 euro
+  sviluppatore: string | null;
+  consegnaPrevista: string | null; // ISO
+  pianoPagamento: string | null;
+  goldenVisa: boolean | null;
+  noteFiscali: string | null;
   referenteUserId: string | null;
   stato: string;
   creatoDaUserId: string;

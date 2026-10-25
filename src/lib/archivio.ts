@@ -88,11 +88,16 @@ export function nuovaChiave(cartella: string, estensione: string): string {
 
 export async function caricaFile(chiave: string, f: FileVerificato): Promise<void> {
   const { client, base } = config();
-  const r = await client.fetch(urlOggetto(base, chiave), {
+  const body = new Uint8Array(f.byte);
+  // Si firma la richiesta ma si invia il contenuto come byte: dentro Next.js
+  // una Request firmata viaggerebbe "a flusso", senza Content-Length, e R2
+  // la rifiuterebbe (411 MissingContentLength).
+  const firmata = await client.sign(urlOggetto(base, chiave), {
     method: "PUT",
-    body: new Uint8Array(f.byte),
-    headers: { "Content-Type": f.formato.contentType },
+    body,
+    headers: { "Content-Type": f.formato.contentType, "Content-Length": String(body.byteLength) },
   });
+  const r = await fetch(firmata.url, { method: "PUT", headers: firmata.headers, body, cache: "no-store" });
   if (!r.ok) throw new Error(`Caricamento nell'archivio non riuscito (${await motivo(r)})`);
 }
 

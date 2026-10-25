@@ -8,10 +8,11 @@ import {
   TIPI,
   etichetta,
   statoMostrato,
+  importoMostrato,
   ticketMinimo,
   type OperazioneDati,
 } from "@/lib/operazioni/definizioni";
-import { euro, percentuale } from "@/lib/numeri";
+import { percentuale } from "@/lib/numeri";
 
 export type SchedaElenco = {
   op: OperazioneDati;
@@ -44,11 +45,12 @@ function renderSelect(
   );
 }
 
-function renderDato(nome: string, valore: string) {
+function renderDato(nome: string, valore: string, sotto?: string | null) {
   return (
     <div key={nome}>
       <div className="etichetta" style={{ marginBottom: 0 }}>{nome}</div>
       <div style={{ fontSize: 14, fontWeight: 600 }}>{valore}</div>
+      {sotto ? <div className="tenue" style={{ fontSize: 11 }}>{sotto}</div> : null}
     </div>
   );
 }
@@ -83,7 +85,7 @@ function renderScheda({ op, copertinaId, compatibili }: SchedaElenco) {
           <span className="badge sabbia">{partner}</span>
         </div>
         <div className="griglia-sintesi" style={{ gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8 }}>
-          {renderDato("Ticket minimo", euro(ticketMinimo(op)))}
+          {renderDato("Ticket minimo", importoMostrato(op, ticketMinimo(op)).importo, importoMostrato(op, ticketMinimo(op)).inEuro)}
           {renderDato("Rend. base stimato", percentuale(op.rendimentoBase))}
           {renderDato("Durata", op.durataStimataMesi ? `${op.durataStimataMesi} mesi` : "—")}
         </div>

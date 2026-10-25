@@ -148,9 +148,12 @@ model ClubOperazione {
   scadenzaRaccolta DateTime?
 
   // Sezione estero: solo per paese diverso da Italia (altrimenti vuoti).
-  // Gli importi restano in euro; cambioEuro = unita' di valuta locale per 1 euro.
-  valutaLocale     String? // codice ISO, es. AED
+  // Con valutaLocale (diversa da EUR) TUTTI gli importi dell'operazione sono
+  // in quella valuta; cambioEuro = unita' di valuta locale per 1 euro (cambio
+  // BCE del giorno cambioDel, o scritto a mano se cambioDel e' vuoto).
+  valutaLocale     String? // codice ISO, es. AED (vuoto = euro)
   cambioEuro       Decimal?  @db.Decimal(12, 4)
+  cambioDel        DateTime?
   sviluppatore     String?
   consegnaPrevista DateTime?
   pianoPagamento   String?

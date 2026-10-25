@@ -56,3 +56,25 @@ export function leggiCambio(testo: string): number | null {
   if (t === "") return null;
   return /^\d{1,7}(\.\d{1,4})?$/.test(t) && Number(t) > 0 ? Number(t) : NaN;
 }
+
+const FORMATI_VALUTA = new Map<string, Intl.NumberFormat>();
+
+// "1.500.000 AED" (importo intero nella valuta indicata; EUR come euro()).
+// "—" se manca.
+export function importoIn(n: number | null | undefined, valuta: string): string {
+  if (n === null || n === undefined) return "—";
+  if (valuta === "EUR") return euro(n);
+  let f = FORMATI_VALUTA.get(valuta);
+  if (!f) {
+    f = new Intl.NumberFormat("it-IT", {
+      style: "currency",
+      currency: valuta,
+      currencyDisplay: "code",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+      useGrouping: "always",
+    });
+    FORMATI_VALUTA.set(valuta, f);
+  }
+  return f.format(n);
+}

@@ -2,7 +2,8 @@
 // Azioni del catalogo operazioni. Ognuna ricontrolla login e permessi (in
 // src/lib/operazioni/dati.ts): non si fida di cio' che arriva dal browser.
 import { revalidatePath } from "next/cache";
-import { utenteConAccesso } from "@/lib/permessi";
+import { puoCreareOperazioni, utenteConAccesso } from "@/lib/permessi";
+import { CambioNonDisponibile, cambioDelGiorno } from "@/lib/cambi";
 import { schedaPerUtente } from "@/lib/investitori";
 import {
   aggiungiFile,
@@ -99,4 +100,18 @@ export async function registraPropostaOperazione(operazioneId: string, chiave: s
   await registraProposta(utente, operazioneId, scheda.investitore.rif);
   aggiorna(operazioneId);
   return { ok: true };
+}
+
+// Cambio BCE del giorno per la valuta scelta nel modulo.
+export async function cercaCambio(valuta: string): Promise<{ ok: true; cambio: number; del: string } | { ok: false; errore: string }> {
+  const utente = await utenteConAccesso();
+  if (!puoCreareOperazioni(utente.ruolo)) return { ok: false, errore: "Non puoi modificare le operazioni." };
+  try {
+    return { ok: true, ...(await cambioDelGiorno(String(valuta))) };
+  } catch (e) {
+    if (e instanceof CambioNonDisponibile || (e instanceof Error && e.name === "TimeoutError")) {
+      return { ok: false, errore: "Cambio BCE non disponibile ora: riprova più tardi oppure scrivilo a mano." };
+    }
+    throw e;
+  }
 }

@@ -5,22 +5,27 @@ import { useMemo, useState, useTransition } from "react";
 import {
   FORMULE,
   GOLDEN_VISA,
-  PAESI_SUGGERITI,
+  PAESE_UAE,
+  PAESI,
   PARTNER,
   TIPI,
-  VALUTE_SUGGERITE,
+  VALUTE,
   costoTotale,
   eRendita,
-  inItalia,
+  inEuro,
   margineLordoStimato,
   motiviBloccoPubblicazione,
+  sceltaPaese,
   ticketMinimo,
+  valutaDi,
   type OperazioneDati,
+  type SceltaPaese,
 } from "@/lib/operazioni/definizioni";
-import { euro, intero, leggiCambio, leggiImporto, leggiPercentuale } from "@/lib/numeri";
+import { cambio, euro, importoIn, intero, leggiCambio, leggiImporto, leggiPercentuale } from "@/lib/numeri";
+import { data } from "@/lib/date";
 import type { Errori, InputOperazione } from "@/lib/operazioni/dati";
 import type { OpzioneReferente } from "@/lib/referenti";
-import { salvaNuovaOperazione, salvaOperazione } from "./azioni";
+import { cercaCambio, salvaNuovaOperazione, salvaOperazione } from "./azioni";
 
 type Props = {
   id: string | null; // null = nuova operazione
@@ -73,6 +78,7 @@ function comeDati(v: InputOperazione): OperazioneDati {
     scadenzaRaccolta: v.scadenzaRaccolta || null,
     valutaLocale: v.valutaLocale || null,
     cambioEuro: numero(leggiCambio(v.cambioEuro)),
+    cambioDel: v.cambioDel || null,
     sviluppatore: v.sviluppatore || null,
     consegnaPrevista: v.consegnaPrevista || null,
     pianoPagamento: v.pianoPagamento || null,
@@ -96,7 +102,11 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
   const dati = useMemo(() => comeDati(valori), [valori]);
   const quota = valori.formula === "quota";
   const rendita = eRendita(valori.tipo);
-  const estero = !!valori.paese.trim() && !inItalia(valori.paese);
+  const [paeseScelto, setPaeseScelto] = useState<SceltaPaese>(sceltaPaese(iniziali.paese));
+  const [cambioInCorso, avviaCambio] = useTransition();
+  const [avvisoCambio, setAvvisoCambio] = useState("");
+  const estero = paeseScelto !== "Italia";
+  const valuta = valutaDi(dati);
   const modificato = JSON.stringify(valori) !== JSON.stringify(salvati);
   const requisiti = motiviBloccoPubblicazione(dati, testoLegaleQuotePresente ? "presente" : "");
 
@@ -104,6 +114,43 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
     setMessaggio(null);
     setErrori((e) => ({ ...e, [k]: undefined }));
     setValori((x) => ({ ...x, [k]: v }));
+  }
+
+  // Cambio BCE del giorno per la valuta: si cerca da solo quando si sceglie
+  // la valuta (e con "Aggiorna cambio"). Per l'euro il cambio non serve.
+  function aggiornaCambio(v: string) {
+    setAvvisoCambio("");
+    setErrori((e) => ({ ...e, cambioEuro: undefined }));
+    if (!v || v === "EUR") {
+      setValori((x) => ({ ...x, cambioEuro: "", cambioDel: "" }));
+      return;
+    }
+    avviaCambio(async () => {
+      const esito = await cercaCambio(v).catch(() => null);
+      if (!esito || !esito.ok) {
+        setAvvisoCambio(esito?.errore ?? "Cambio non disponibile ora: riprova oppure scrivilo a mano.");
+        return;
+      }
+      setValori((x) => (x.valutaLocale === v ? { ...x, cambioEuro: cambio(esito.cambio), cambioDel: esito.del } : x));
+    });
+  }
+
+  function scegliPaese(scelta: SceltaPaese) {
+    setMessaggio(null);
+    setPaeseScelto(scelta);
+    if (scelta === "Italia") {
+      setValori((x) => ({ ...x, paese: "Italia", valutaLocale: "", cambioEuro: "", cambioDel: "" }));
+    } else if (scelta === PAESE_UAE) {
+      setValori((x) => ({ ...x, paese: PAESE_UAE, valutaLocale: "AED" }));
+      aggiornaCambio("AED");
+    } else {
+      setValori((x) => ({ ...x, paese: "", valutaLocale: "EUR", cambioEuro: "", cambioDel: "" }));
+    }
+  }
+
+  function scegliValuta(v: string) {
+    cambia("valutaLocale", v);
+    aggiornaCambio(v);
   }
 
   // Importi: al cambio di campo si riscrivono con il separatore delle migliaia.
@@ -162,7 +209,7 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
   function renderImporto(k: CampoTesto, etichetta: string) {
     return (
       <div key={k}>
-        <label className="etichetta" htmlFor={k}>{etichetta} (€)</label>
+        <label className="etichetta" htmlFor={k}>{etichetta} ({valuta === "EUR" ? "€" : valuta})</label>
         <input
           id={k}
           className="campo"
@@ -242,8 +289,77 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
           {nome}
           {nota ? <span className="tenue" style={{ display: "block", fontSize: 11 }}>{nota}</span> : null}
         </span>
-        <strong style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{euro(valore)}</strong>
+        <span style={{ textAlign: "right" }}>
+          <strong style={{ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>{importoIn(valore, valuta)}</strong>
+          {valuta === "EUR" ? null : (
+            <span className="tenue" style={{ display: "block", fontSize: 12, fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+              ≈ {euro(inEuro(dati, valore))}
+            </span>
+          )}
+        </span>
       </div>
+    );
+  }
+
+  function renderPaese() {
+    return (
+      <div key="paese">
+        <label className="etichetta" htmlFor="sceltaPaese">Paese *</label>
+        <select id="sceltaPaese" className="campo" value={paeseScelto} onChange={(e) => scegliPaese(e.target.value as SceltaPaese)}>
+          {PAESI.map((o) => (
+            <option key={o.valore} value={o.valore}>
+              {o.etichetta}
+            </option>
+          ))}
+        </select>
+        {paeseScelto === "altro" ? null : renderErrore("paese")}
+      </div>
+    );
+  }
+
+  // Valuta e cambio, solo all'estero: gli importi si scrivono nella valuta.
+  function renderValuta() {
+    return (
+      <>
+        <div key="valutaLocale">
+          <label className="etichetta" htmlFor="valutaLocale">Valuta degli importi *</label>
+          <select id="valutaLocale" className="campo" value={valori.valutaLocale || "EUR"} onChange={(e) => scegliValuta(e.target.value)}>
+            {VALUTE.map((o) => (
+              <option key={o.valore} value={o.valore}>
+                {o.etichetta}
+              </option>
+            ))}
+          </select>
+          {renderErrore("valutaLocale")}
+        </div>
+        {valuta === "EUR" ? null : (
+          <div key="cambioEuro">
+            <label className="etichetta" htmlFor="cambioEuro">Cambio: {valuta} per 1 € *</label>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                id="cambioEuro"
+                className="campo"
+                inputMode="decimal"
+                value={valori.cambioEuro}
+                placeholder={cambioInCorso ? "ricerca…" : "es. 4,1105"}
+                onChange={(e) => setValori((x) => ({ ...x, cambioEuro: e.target.value, cambioDel: "" }))}
+              />
+              <button type="button" className="pulsante leggero" onClick={() => aggiornaCambio(valuta)} disabled={cambioInCorso} style={{ whiteSpace: "nowrap" }}>
+                {cambioInCorso ? "Ricerca…" : "Aggiorna cambio"}
+              </button>
+            </div>
+            <div className="tenue" style={{ fontSize: 11, marginTop: 4 }}>
+              {valori.cambioDel
+                ? `Cambio ufficiale BCE del ${data(valori.cambioDel + "T12:00:00Z")}${valuta === "AED" ? " (dal dollaro, cambio fisso 3,6725 AED)" : ""}`
+                : valori.cambioEuro
+                  ? "Cambio scritto a mano"
+                  : ""}
+            </div>
+            {avvisoCambio ? <div style={{ color: "#a33", fontSize: 12, marginTop: 4 }}>{avvisoCambio}</div> : null}
+            {renderErrore("cambioEuro")}
+          </div>
+        )}
+      </>
     );
   }
 
@@ -255,18 +371,15 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
           <>
             {renderTesto("titolo", "Titolo", { obbligatorio: true, placeholder: "es. Trilocale da ristrutturare in Albaro" })}
             {renderScelta("tipo", "Tipo", TIPI)}
-            {renderTesto("paese", "Paese", { obbligatorio: true, lista: "paesi" })}
+            {renderPaese()}
+            {paeseScelto === "altro" ? renderTesto("paese", "Nome del paese", { obbligatorio: true, placeholder: "es. Spagna" }) : null}
+            {estero ? renderValuta() : null}
             {renderTesto("citta", "Città")}
             {renderTesto("zona", "Zona")}
             {renderScelta("partner", "Partner", PARTNER)}
             {valori.partner === "altro" ? renderTesto("partnerAltro", "Nome del partner", { obbligatorio: true }) : null}
             {renderScelta("formula", "Formula", FORMULE)}
             {renderScelta("referenteUserId", "Referente", referenti)}
-            <datalist id="paesi">
-              {PAESI_SUGGERITI.map((p) => (
-                <option key={p} value={p} />
-              ))}
-            </datalist>
           </>,
         )}
 
@@ -286,7 +399,7 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
               </label>
             </div>
           </>,
-          "Importi in euro interi.",
+          valuta === "EUR" ? "Importi in euro interi." : `Importi interi in ${valuta}: nei riepiloghi compaiono anche in euro.`,
         )}
 
         {renderSezione(
@@ -318,20 +431,13 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
           ? renderSezione(
               "Estero",
               <>
-                {renderTesto("valutaLocale", "Valuta locale", { placeholder: "es. AED", lista: "valute" })}
-                {renderNumero("cambioEuro", "Cambio di riferimento (valuta per 1 €)", "es. 4,0125")}
                 {renderTesto("sviluppatore", "Sviluppatore / costruttore")}
                 {renderData("consegnaPrevista", "Consegna prevista")}
                 {renderScelta("goldenVisa", "Golden Visa", GOLDEN_VISA, false)}
-                <datalist id="valute">
-                  {VALUTE_SUGGERITE.map((v) => (
-                    <option key={v} value={v} />
-                  ))}
-                </datalist>
                 <div style={{ gridColumn: "1 / -1" }}>{renderArea("pianoPagamento", "Piano di pagamento", "Es. 20% alla firma, 40% durante i lavori, 40% alla consegna.")}</div>
                 <div style={{ gridColumn: "1 / -1" }}>{renderArea("noteFiscali", "Fiscalità e costi locali", "Tasse, costi di registrazione, regole per gli acquirenti stranieri.")}</div>
               </>,
-              "Solo per le operazioni fuori dall'Italia. Gli importi del modulo restano in euro.",
+              "Solo per le operazioni fuori dall'Italia.",
             )
           : null}
 

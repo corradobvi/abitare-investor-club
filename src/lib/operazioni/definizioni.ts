@@ -4,6 +4,8 @@
 //
 // Nessun import di server o database: il file si usa anche nei componenti client.
 
+import { importoIn } from "@/lib/numeri";
+
 export type Opzione<T extends string = string> = { valore: T; etichetta: string };
 
 export type TipoOperazione = "flipping" | "rendita-lungo" | "rendita-breve";
@@ -45,11 +47,55 @@ export const VISIBILITA_FILE: Opzione<VisibilitaFile>[] = [
   { valore: "riservato", etichetta: "Riservato (dopo la manifestazione d'interesse)" },
 ];
 
-// Paesi proposti nel modulo (si puo' scriverne un altro).
-export const PAESI_SUGGERITI = ["Italia", "Emirati Arabi Uniti", "Spagna", "Portogallo", "Grecia"];
+// Paese nel modulo: Italia, UAE oppure Altro (nome scritto a mano). Si salva
+// il nome del paese; per gli UAE la valuta proposta e' il dirham.
+export const PAESE_UAE = "Emirati Arabi Uniti";
+export type SceltaPaese = "Italia" | typeof PAESE_UAE | "altro";
+export const PAESI: Opzione<SceltaPaese>[] = [
+  { valore: "Italia", etichetta: "Italia" },
+  { valore: PAESE_UAE, etichetta: "UAE (Emirati Arabi Uniti)" },
+  { valore: "altro", etichetta: "Altro" },
+];
 
-// Valute proposte nella sezione estero (si puo' scriverne un'altra).
-export const VALUTE_SUGGERITE = ["AED", "USD", "GBP", "CHF"];
+export function sceltaPaese(paese: string): SceltaPaese {
+  if (inItalia(paese)) return "Italia";
+  return paese.trim() === PAESE_UAE ? PAESE_UAE : "altro";
+}
+
+// Valute delle operazioni all'estero: euro, dirham e le valute con cambio
+// ufficiale BCE (src/lib/cambi.ts). Gli importi si scrivono nella valuta scelta.
+export const VALUTE: Opzione[] = [
+  { valore: "EUR", etichetta: "EUR · euro" },
+  { valore: "AED", etichetta: "AED · dirham degli Emirati" },
+  { valore: "USD", etichetta: "USD · dollaro USA" },
+  { valore: "GBP", etichetta: "GBP · sterlina britannica" },
+  { valore: "CHF", etichetta: "CHF · franco svizzero" },
+  { valore: "SEK", etichetta: "SEK · corona svedese" },
+  { valore: "NOK", etichetta: "NOK · corona norvegese" },
+  { valore: "DKK", etichetta: "DKK · corona danese" },
+  { valore: "PLN", etichetta: "PLN · zloty polacco" },
+  { valore: "CZK", etichetta: "CZK · corona ceca" },
+  { valore: "HUF", etichetta: "HUF · fiorino ungherese" },
+  { valore: "RON", etichetta: "RON · leu rumeno" },
+  { valore: "TRY", etichetta: "TRY · lira turca" },
+  { valore: "CAD", etichetta: "CAD · dollaro canadese" },
+  { valore: "AUD", etichetta: "AUD · dollaro australiano" },
+  { valore: "THB", etichetta: "THB · baht thailandese" },
+  { valore: "SGD", etichetta: "SGD · dollaro di Singapore" },
+];
+
+// Valuta degli importi: euro in Italia o se non indicata.
+export function valutaDi(op: Pick<OperazioneDati, "paese" | "valutaLocale">): string {
+  return inItalia(op.paese) ? "EUR" : op.valutaLocale || "EUR";
+}
+
+// Importo convertito in euro (arrotondato all'euro). null se manca
+// l'importo o, per le altre valute, il cambio.
+export function inEuro(op: Pick<OperazioneDati, "paese" | "valutaLocale" | "cambioEuro">, n: number | null): number | null {
+  if (n === null) return null;
+  if (valutaDi(op) === "EUR") return n;
+  return op.cambioEuro ? Math.round(n / op.cambioEuro) : null;
+}
 
 // Golden Visa nel modulo: "" = non indicato.
 export const GOLDEN_VISA: Opzione<"" | "si" | "no">[] = [
@@ -110,6 +156,7 @@ export type OperazioneDati = {
   // Sezione estero (null per le operazioni in Italia).
   valutaLocale: string | null;
   cambioEuro: number | null; // unita' di valuta locale per 1 euro
+  cambioDel: string | null; // ISO, giorno del cambio BCE (null = scritto a mano)
   sviluppatore: string | null;
   consegnaPrevista: string | null; // ISO
   pianoPagamento: string | null;
@@ -122,9 +169,15 @@ export type OperazioneDati = {
 };
 
 // Ticket minimo: la quota minima per le operazioni in quote, altrimenti il
-// capitale richiesto.
+// capitale richiesto. Nella valuta dell'operazione: in euro con ticketMinimoEuro.
 export function ticketMinimo(op: Pick<OperazioneDati, "formula" | "quotaMinima" | "capitaleRichiesto">): number | null {
   return op.formula === "quota" ? op.quotaMinima : op.capitaleRichiesto;
+}
+
+export function ticketMinimoEuro(
+  op: Pick<OperazioneDati, "formula" | "quotaMinima" | "capitaleRichiesto" | "paese" | "valutaLocale" | "cambioEuro">,
+): number | null {
+  return inEuro(op, ticketMinimo(op));
 }
 
 // Costo totale = acquisto + lavori + altri costi (null se non c'e' nessuna voce).
@@ -199,6 +252,7 @@ export function motiviBloccoPubblicazione(op: OperazioneDati, testoLegaleQuote: 
   if (vuoto(op.rischi)) motivi.push("Mancano i rischi.");
   if (op.rendimentoBase === null) motivi.push("Manca il rendimento base stimato.");
   if (op.durataStimataMesi === null) motivi.push("Manca la durata stimata.");
+  if (valutaDi(op) !== "EUR" && !op.cambioEuro) motivi.push("Manca il cambio della valuta con l'euro.");
   if (op.formula === "quota") {
     if (op.quotaMinima === null) motivi.push("Manca la quota minima.");
     if (op.numeroMaxSoci === null) motivi.push("Manca il numero massimo di soci.");
@@ -209,4 +263,16 @@ export function motiviBloccoPubblicazione(op: OperazioneDati, testoLegaleQuote: 
     motivi.push("Manca il capitale richiesto.");
   }
   return motivi;
+}
+
+// Importo per i riepiloghi: nella valuta dell'operazione e, se non e' euro,
+// anche convertito in euro ("≈ 364.900 €").
+export function importoMostrato(
+  op: Pick<OperazioneDati, "paese" | "valutaLocale" | "cambioEuro">,
+  n: number | null,
+): { importo: string; inEuro: string | null } {
+  const valuta = valutaDi(op);
+  if (valuta === "EUR") return { importo: importoIn(n, "EUR"), inEuro: null };
+  const e = inEuro(op, n);
+  return { importo: importoIn(n, valuta), inEuro: e === null ? null : `≈ ${importoIn(e, "EUR")}` };
 }

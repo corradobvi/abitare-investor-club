@@ -12,16 +12,18 @@ import {
   costoTotale,
   eRendita,
   etichetta,
+  importoMostrato,
   inItalia,
   margineLordoStimato,
   motiviBloccoPubblicazione,
   statoMostrato,
   ticketMinimo,
+  valutaDi,
   type OperazioneDati,
 } from "@/lib/operazioni/definizioni";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import { FASI } from "@/lib/profilo/fase";
-import { cambio, euro, percentuale } from "@/lib/numeri";
+import { cambio, percentuale } from "@/lib/numeri";
 import { data, dataOra } from "@/lib/date";
 import PulsantiFlusso from "./PulsantiFlusso";
 import PropostaWhatsapp from "./PropostaWhatsapp";
@@ -61,6 +63,12 @@ function renderDato(nome: string, valore: React.ReactNode, nota?: string) {
       {nota ? <div className="tenue" style={{ fontSize: 11 }}>{nota}</div> : null}
     </div>
   );
+}
+
+// Importo nella valuta dell'operazione; all'estero anche in euro.
+function renderImporto(op: OperazioneDati, nome: string, n: number | null, nota?: string) {
+  const m = importoMostrato(op, n);
+  return renderDato(nome, m.importo, [m.inEuro, nota].filter(Boolean).join(" · ") || undefined);
 }
 
 function renderTesto(titolo: string, testo: string | null) {
@@ -130,8 +138,15 @@ function goldenVisa(v: boolean | null): string {
 }
 
 function cambioMostrato(op: OperazioneDati): string {
-  if (!op.valutaLocale) return "—";
-  return op.cambioEuro === null ? op.valutaLocale : `1 € = ${cambio(op.cambioEuro)} ${op.valutaLocale}`;
+  const valuta = valutaDi(op);
+  if (valuta === "EUR") return "Euro";
+  return op.cambioEuro === null ? valuta : `1 € = ${cambio(op.cambioEuro)} ${valuta}`;
+}
+
+function notaCambio(op: OperazioneDati): string | undefined {
+  if (valutaDi(op) === "EUR" || op.cambioEuro === null) return undefined;
+  if (!op.cambioDel) return "cambio scritto a mano";
+  return `cambio ufficiale BCE del ${data(op.cambioDel)}${op.valutaLocale === "AED" ? " (dal dollaro, 3,6725 AED)" : ""}`;
 }
 
 // Sezione estero: solo per le operazioni fuori dall'Italia. Nell'anteprima
@@ -142,7 +157,7 @@ function renderEstero(op: OperazioneDati, completa: boolean) {
     <section className="riquadro">
       <h2 className="titolo" style={{ fontSize: completa ? 22 : 18, marginBottom: 14 }}>Estero</h2>
       <div className="griglia-dati">
-        {renderDato("Valuta e cambio", cambioMostrato(op), op.cambioEuro !== null ? "di riferimento, importi in euro" : undefined)}
+        {renderDato("Valuta e cambio", cambioMostrato(op), notaCambio(op))}
         {renderDato("Sviluppatore / costruttore", op.sviluppatore)}
         {renderDato("Consegna prevista", op.consegnaPrevista ? data(op.consegnaPrevista) : "—")}
         {renderDato("Golden Visa", goldenVisa(op.goldenVisa))}
@@ -267,7 +282,7 @@ export default async function SchedaOperazionePage({
               </div>
             ) : null}
             <div className="griglia-sintesi" style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-              {renderDato("Ticket minimo", euro(ticketMinimo(op)))}
+              {renderImporto(op, "Ticket minimo", ticketMinimo(op))}
               {renderDato("Rendimento base stimato", percentuale(op.rendimentoBase), "annuo, non garantito")}
               {renderDato("Durata stimata", op.durataStimataMesi ? `${op.durataStimataMesi} mesi` : "—")}
               {renderDato("Formula", etichetta(FORMULE, op.formula))}
@@ -367,16 +382,16 @@ export default async function SchedaOperazionePage({
           <section className="riquadro">
             <h2 className="titolo" style={{ fontSize: 22, marginBottom: 14 }}>Numeri</h2>
             <div className="griglia-dati">
-              {renderDato("Prezzo d'acquisto", euro(op.prezzoAcquisto))}
-              {renderDato("Costi dei lavori", euro(op.costiLavori))}
-              {renderDato("Altri costi", euro(op.altriCosti))}
-              {renderDato("Costo totale", euro(costoTotale(op)), "acquisto + lavori + altri costi")}
-              {quota ? null : renderDato("Capitale richiesto", euro(op.capitaleRichiesto))}
+              {renderImporto(op, "Prezzo d'acquisto", op.prezzoAcquisto)}
+              {renderImporto(op, "Costi dei lavori", op.costiLavori)}
+              {renderImporto(op, "Altri costi", op.altriCosti)}
+              {renderImporto(op, "Costo totale", costoTotale(op), "acquisto + lavori + altri costi")}
+              {quota ? null : renderImporto(op, "Capitale richiesto", op.capitaleRichiesto)}
               {eRendita(op.tipo)
-                ? renderDato("Canone annuo stimato", euro(op.canoneAnnuoStimato))
-                : renderDato("Valore di rivendita stimato", euro(op.valoreRivenditaStimato))}
-              {op.tipo === "flipping" ? renderDato("Margine lordo stimato", euro(margine), "rivendita − costo totale") : null}
-              {renderDato("Ticket minimo", euro(ticketMinimo(op)))}
+                ? renderImporto(op, "Canone annuo stimato", op.canoneAnnuoStimato)
+                : renderImporto(op, "Valore di rivendita stimato", op.valoreRivenditaStimato)}
+              {op.tipo === "flipping" ? renderImporto(op, "Margine lordo stimato", margine, "rivendita − costo totale") : null}
+              {renderImporto(op, "Ticket minimo", ticketMinimo(op))}
               {renderDato("Durata stimata", op.durataStimataMesi ? `${op.durataStimataMesi} mesi` : "—")}
               {renderDato("Scadenza della raccolta", op.scadenzaRaccolta ? data(op.scadenzaRaccolta) : "—")}
               {renderDato("Finanziabile", op.finanziabile ? "Sì" : "No")}
@@ -387,9 +402,9 @@ export default async function SchedaOperazionePage({
                 <h3 style={{ fontSize: 16, margin: "18px 0 10px" }}>Quote</h3>
                 <div className="griglia-dati">
                   {renderDato("Numero massimo di soci", op.numeroMaxSoci ?? "—")}
-                  {renderDato("Quota minima", euro(op.quotaMinima))}
-                  {renderDato("Importo da raccogliere", euro(op.importoDaRaccogliere))}
-                  {renderDato("Importo impegnato", euro(op.importoImpegnato), "aggiornato a mano")}
+                  {renderImporto(op, "Quota minima", op.quotaMinima)}
+                  {renderImporto(op, "Importo da raccogliere", op.importoDaRaccogliere)}
+                  {renderImporto(op, "Importo impegnato", op.importoImpegnato, "aggiornato a mano")}
                 </div>
               </>
             ) : null}

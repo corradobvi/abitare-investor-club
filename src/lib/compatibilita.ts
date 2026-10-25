@@ -6,7 +6,8 @@
 //    a) tipo: flipping vuole obiettivo flipping o entrambi; rendita (lungo o
 //       breve) vuole rendita o entrambi;
 //    b) area: Italia vuole area italia o entrambi; estero vuole estero o entrambi;
-//    c) capitale: il massimo della fascia del cliente >= ticket minimo;
+//    c) capitale: il massimo della fascia del cliente >= ticket minimo in euro
+//       (per le operazioni in altra valuta, convertito con il cambio salvato);
 //    d) formula (solo flipping): chi ha scelto "intera" esclude le quote e
 //       viceversa.
 // 2. Punteggio: 100, meno le penalita' motivate (rendimento sotto la fascia
@@ -20,7 +21,7 @@
 // Nessun import di server o database: il file si usa anche nei componenti client.
 import { completezzaProfilo } from "@/lib/profilo/completezza";
 import { etichettaRisposta, haRisposta, type Risposte } from "@/lib/profilo/domande";
-import { eRendita, inItalia, ticketMinimo, type OperazioneDati } from "@/lib/operazioni/definizioni";
+import { eRendita, inItalia, ticketMinimoEuro, type OperazioneDati } from "@/lib/operazioni/definizioni";
 import { euro, percentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
 
@@ -46,6 +47,8 @@ export type OperazionePerCompatibilita = Pick<
   | "finanziabile"
   | "scadenzaRaccolta"
   | "goldenVisa"
+  | "valutaLocale"
+  | "cambioEuro"
 >;
 
 // Massimo della fascia di capitale (Infinity = nessun limite).
@@ -124,7 +127,7 @@ export function compatibilita(
 
   // c) capitale
   const capitale = testo(r.capitale);
-  const ticket = ticketMinimo(op);
+  const ticket = ticketMinimoEuro(op);
   if (capitale && ticket !== null && capitale in MASSIMO_CAPITALE) {
     const fascia = etichettaRisposta("capitale", capitale);
     if (MASSIMO_CAPITALE[capitale] >= ticket) positivi.push(`Capitale ${fascia}, ticket minimo ${euro(ticket)}`);

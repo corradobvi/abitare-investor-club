@@ -46,8 +46,16 @@ export function verificaFile(byte: Uint8Array, genere: GenereFile): FileVerifica
   return { byte, formato };
 }
 
+// Valore di una variabile senza spazi o virgolette incollati per errore.
+function variabile(nome: string): string {
+  return (process.env[nome] ?? "").trim().replace(/^["']+|["']+$/g, "").trim();
+}
+
 function config() {
-  const { R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT, R2_BUCKET } = process.env;
+  const R2_ACCESS_KEY_ID = variabile("R2_ACCESS_KEY_ID");
+  const R2_SECRET_ACCESS_KEY = variabile("R2_SECRET_ACCESS_KEY");
+  const R2_ENDPOINT = variabile("R2_ENDPOINT");
+  const R2_BUCKET = variabile("R2_BUCKET").replace(/^\/+|\/+$/g, "");
   if (!R2_ACCESS_KEY_ID || !R2_SECRET_ACCESS_KEY || !R2_ENDPOINT || !R2_BUCKET) {
     throw new Error("Archivio file non configurato (variabili R2_*)");
   }
@@ -60,6 +68,13 @@ function config() {
     }),
     base: `${R2_ENDPOINT.replace(/\/+$/, "")}/${R2_BUCKET}/`,
   };
+}
+
+// Codice d'errore dell'archivio (es. "InvalidBucketName"), senza dati riservati.
+async function motivo(r: Response): Promise<string> {
+  const testo = await r.text().catch(() => "");
+  const codice = /<Code>([^<]{1,80})<\/Code>/.exec(testo)?.[1];
+  return codice ? `${r.status} ${codice}` : String(r.status);
 }
 
 function urlOggetto(base: string, chiave: string): string {
@@ -78,14 +93,14 @@ export async function caricaFile(chiave: string, f: FileVerificato): Promise<voi
     body: new Uint8Array(f.byte),
     headers: { "Content-Type": f.formato.contentType },
   });
-  if (!r.ok) throw new Error(`Caricamento nell'archivio non riuscito (${r.status})`);
+  if (!r.ok) throw new Error(`Caricamento nell'archivio non riuscito (${await motivo(r)})`);
 }
 
 // Elimina un file. Un file gia' assente non e' un errore.
 export async function eliminaFile(chiave: string): Promise<void> {
   const { client, base } = config();
   const r = await client.fetch(urlOggetto(base, chiave), { method: "DELETE" });
-  if (!r.ok && r.status !== 404) throw new Error(`Eliminazione dall'archivio non riuscita (${r.status})`);
+  if (!r.ok && r.status !== 404) throw new Error(`Eliminazione dall'archivio non riuscita (${await motivo(r)})`);
 }
 
 // Link temporaneo per vedere (o scaricare, con nomeDownload) un file.

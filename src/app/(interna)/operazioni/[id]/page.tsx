@@ -33,6 +33,10 @@ import PropostaWhatsapp from "./PropostaWhatsapp";
 import ImportoImpegnato from "./ImportoImpegnato";
 import PulsanteSblocca from "../../PulsanteSblocca";
 import StatoManifestazione from "../../StatoManifestazione";
+import RiquadroSimulatore from "@/app/RiquadroSimulatore";
+import { renderInteresse } from "../../interesse-ui";
+import { punteggiSalvati } from "@/lib/punteggio-dati";
+import { AVVERTENZA_SIMULATORE_PREDEFINITA, perSimulatore } from "@/lib/simulatore";
 
 export const dynamic = "force-dynamic";
 
@@ -205,9 +209,10 @@ export default async function SchedaOperazionePage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ vista?: string }>;
+  searchParams: Promise<{ vista?: string; ordine?: string }>;
 }) {
-  const [{ id }, { vista }] = await Promise.all([params, searchParams]);
+  const [{ id }, { vista, ordine }] = await Promise.all([params, searchParams]);
+  const perInteresse = ordine === "interesse";
   const utente = await utenteConAccesso();
   const trovata = await operazionePerUtente(utente, id);
   if (!trovata) notFound();
@@ -314,7 +319,12 @@ export default async function SchedaOperazionePage({
     );
   }
 
-  function renderInvestitore(i: InvestitoreCompatibile, sbloccati: Set<string>, interessati: Set<string>) {
+  function renderInvestitore(
+    i: InvestitoreCompatibile,
+    sbloccati: Set<string>,
+    interessati: Set<string>,
+    punteggi: Map<string, { punteggio: number; fascia: string }>,
+  ) {
     return (
       <li key={i.chiave} style={{ padding: "12px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -324,7 +334,10 @@ export default async function SchedaOperazionePage({
             </Link>
             <span className="tenue" style={{ fontSize: 13 }}> · {i.referente} · {fase(i.fase)}</span>
           </span>
-          <span className="badge scuro" style={{ fontSize: 12 }}>{i.punteggio}/100</span>
+          <span style={{ display: "inline-flex", gap: 10, alignItems: "center" }}>
+            {renderInteresse(punteggi.get(i.chiave) ?? null)}
+            <span className="badge scuro" style={{ fontSize: 12 }} title="Compatibilità">{i.punteggio}/100</span>
+          </span>
         </div>
         {i.positivi.length ? <div style={{ fontSize: 13 }}>✓ {i.positivi.join(" · ")}</div> : null}
         {i.attenzione.length ? <div style={{ fontSize: 13, color: "#8a4b1f" }}>⚠ {i.attenzione.join(" · ")}</div> : null}
@@ -407,31 +420,41 @@ export default async function SchedaOperazionePage({
       sblocchiOperazione(op.id),
     ]);
     const interessati = new Set(manifestazioni.map((m) => m.chiaveInvestitore));
-    const riga = (i: InvestitoreCompatibile) => renderInvestitore(i, sbloccati, interessati);
+    const punteggi = await punteggiSalvati([...compatibili, ...possibili, ...prova].map((i) => i.chiave));
+    // Ordine: compatibilita' (com'e') oppure interesse, a parita' compatibilita'.
+    const ordina = (lista: InvestitoreCompatibile[]) =>
+      perInteresse
+        ? [...lista].sort((a, b) => (punteggi.get(b.chiave)?.punteggio ?? -1) - (punteggi.get(a.chiave)?.punteggio ?? -1) || b.punteggio - a.punteggio)
+        : lista;
+    const riga = (i: InvestitoreCompatibile) => renderInvestitore(i, sbloccati, interessati, punteggi);
     return (
       <>
       {renderManifestazioni(manifestazioni, visibili)}
       <section className="riquadro">
         <h2 className="titolo" style={{ fontSize: 22 }}>Investitori compatibili ({compatibili.length})</h2>
         <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
-          {utente.visibilita === "tutti" ? "Tra tutti gli investitori" : "Tra gli investitori di cui sei referente"}, ordinati per
-          punteggio. {op.stato === "pubblicata" ? "WhatsApp si apre col messaggio già scritto: l'invio lo fai tu." : "Si possono proporre solo le operazioni pubblicate."}
+          {utente.visibilita === "tutti" ? "Tra tutti gli investitori" : "Tra gli investitori di cui sei referente"}, ordinati per{" "}
+          {perInteresse ? "interesse (pallino) e poi compatibilità" : "compatibilità (riquadro scuro)"}.{" "}
+          <Link href={perInteresse ? `/operazioni/${op.id}` : `/operazioni/${op.id}?ordine=interesse`}>
+            Ordina per {perInteresse ? "compatibilità" : "interesse"}
+          </Link>
+          . {op.stato === "pubblicata" ? "WhatsApp si apre col messaggio già scritto: l'invio lo fai tu." : "Si possono proporre solo le operazioni pubblicate."}
         </p>
         {compatibili.length === 0 ? (
           <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessun investitore con profilo completo è compatibile.</p>
         ) : (
-          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(riga)}</ul>
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{ordina(compatibili).map(riga)}</ul>
         )}
         <h3 style={{ fontSize: 16, marginTop: 20 }}>Possibili, profilo incompleto ({possibili.length})</h3>
         <p className="tenue" style={{ fontSize: 12 }}>Valutati solo sulle risposte già date: conviene completare il profilo prima di proporre.</p>
-        {possibili.length ? <ul style={{ listStyle: "none", marginTop: 8 }}>{possibili.map(riga)}</ul> : null}
+        {possibili.length ? <ul style={{ listStyle: "none", marginTop: 8 }}>{ordina(possibili).map(riga)}</ul> : null}
         {prova.length ? (
           <>
             <h3 style={{ fontSize: 16, marginTop: 20 }}>
               Contatti di prova ({prova.length}) <span className="badge allerta">PROVA</span>
             </h3>
             <p className="tenue" style={{ fontSize: 12 }}>Per i collaudi del portale: non contano nei totali.</p>
-            <ul style={{ listStyle: "none", marginTop: 8 }}>{prova.map(riga)}</ul>
+            <ul style={{ listStyle: "none", marginTop: 8 }}>{ordina(prova).map(riga)}</ul>
           </>
         ) : null}
       </section>
@@ -517,6 +540,14 @@ export default async function SchedaOperazionePage({
               {renderScenario("Ottimista", op.rendimentoOttimista)}
             </div>
           </section>
+
+          <RiquadroSimulatore
+            op={perSimulatore(op)}
+            massimoCliente={null}
+            avvertenzaSimulatore={imp.testoAvvertenzaSimulatore || AVVERTENZA_SIMULATORE_PREDEFINITA}
+            avvertenzaOperazioni={avvertenza}
+            titolo="Simula l'investimento"
+          />
 
           {renderTesto("Descrizione", op.descrizione)}
           {renderTesto("Punti di forza", op.puntiDiForza)}

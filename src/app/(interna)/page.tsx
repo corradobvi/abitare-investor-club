@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { puoCreareContattiProva, utenteConAccesso } from "@/lib/permessi";
-import { contattiProvaPerUtente, elencoPerUtente, type RigaElenco } from "@/lib/investitori";
+import { elencoConProva, type RigaElenco } from "@/lib/investitori";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { codiceAttivo, linkNuoviMostrato } from "@/lib/codici-invito";
 import { novitaPerUtente, type VoceNovita } from "@/lib/novita";
 import ElencoInvestitori from "./ElencoInvestitori";
 import RiquadroLinkNuovi from "./RiquadroLinkNuovi";
 import CreaContattoProva from "./CreaContattoProva";
+import { renderInteresse } from "./interesse-ui";
 
 export const dynamic = "force-dynamic";
 
@@ -69,8 +70,8 @@ function renderContattiProva(prova: RigaElenco[], puoCreare: boolean) {
               <Link href={`/investitori/${r.chiave}`} style={{ fontWeight: 600, textDecoration: "none" }}>
                 {r.nomeCompleto}
               </Link>
-              <span className="tenue" style={{ fontSize: 13 }}>
-                {r.referente.nome} · profilo {r.percentuale}%
+              <span className="tenue" style={{ fontSize: 13, display: "inline-flex", gap: 10, alignItems: "center" }}>
+                {renderInteresse(r.interesse)} {r.referente.nome} · profilo {r.percentuale}%
               </span>
             </li>
           ))}
@@ -83,9 +84,10 @@ function renderContattiProva(prova: RigaElenco[], puoCreare: boolean) {
 
 export default async function ElencoPage() {
   const utente = await utenteConAccesso();
-  const [righe, prova, imp] = await Promise.all([elencoPerUtente(utente), contattiProvaPerUtente(utente), leggiImpostazioni()]);
+  const [{ righe, prova }, imp] = await Promise.all([elencoConProva(utente), leggiImpostazioni()]);
   const [novita, codice] = await Promise.all([novitaPerUtente(utente, righe, prova), codiceAttivo(utente.id)]);
   const gruppi = [
+    renderGruppo("Clienti diventati caldi · ultimi 14 giorni", novita.caldi, true),
     renderGruppo("Manifestazioni d'interesse nuove", novita.manifestazioni, true),
     renderGruppo("Da confermare", novita.daConfermare),
     renderGruppo("Profili completati · ultimi 14 giorni", novita.completati),

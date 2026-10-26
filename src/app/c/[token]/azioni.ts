@@ -13,22 +13,37 @@ import {
   TIPI_VISTA,
   manifestaInteresse,
   operazioneDelCliente,
+  registraSimulazione,
   registraVista as registraVistaCliente,
   ritiraInteresse as ritiraInteresseCliente,
   type EsitoInteresse,
   type InputManifestazione,
 } from "@/lib/operazioni/interessi";
 import type { Rif } from "@/lib/riferimento";
+import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
+import { importoNeiLimiti, limitiSimulatore } from "@/lib/simulatore";
+import { massimoCapitale } from "@/lib/compatibilita";
 
 type Esito = { ok: true; completo: boolean } | { ok: false; errore: string };
 
 const NON_DISPONIBILE = "Il salvataggio non è disponibile: ricarica la pagina o contatta il tuo consulente.";
 
+// Attivita' del cliente da registrare (aperture, visite, simulazioni):
+// - cliente vero con portale attivo, non un utente dell'area interna;
+// - contatto di prova (anche aperto dallo staff, per i collaudi): i suoi
+//   eventi e il suo punteggio restano fuori da avvisi e statistiche.
+async function contestoDaTracciare(token: unknown): Promise<ContestoLink | null> {
+  const ctx = await contestoLink(token);
+  if (!ctx) return null;
+  if (ctx.investitore.prova) return salvaInModalita(ctx.modalita) ? ctx : null;
+  if (ctx.modalita !== "attivo" || (await utenteInterno())) return null;
+  return ctx;
+}
+
 // Apertura vista davvero in un browser (la chiama la pagina dopo il
-// caricamento). Gli utenti dell'area interna non contano.
+// caricamento).
 export async function registraApertura(token: unknown): Promise<void> {
-  if (typeof token !== "string") return;
-  if (await utenteInterno()) return;
+  if (typeof token !== "string" || !(await contestoDaTracciare(token))) return;
   await apriInvito(token);
 }
 
@@ -40,6 +55,7 @@ async function contestoPerSalvare(token: unknown): Promise<ContestoLink | null> 
 async function salva(rif: Rif, modifiche: Record<string, unknown>, passo: string): Promise<Esito> {
   try {
     const { risposte } = await salvaProfiloDaCliente(rif, modifiche, passo);
+    await ricalcolaPunteggio(rif);
     return { ok: true, completo: completezzaProfilo(risposte).completo };
   } catch (e) {
     if (e instanceof RispostaNonValida) return { ok: false, errore: "Risposta non valida: ricarica la pagina e riprova." };
@@ -81,13 +97,12 @@ export async function ritiraManifestazione(token: unknown, manifestazioneId: unk
   return ritiraInteresseCliente(ctx.investitore.rif, manifestazioneId);
 }
 
-// Visita di una scheda o apertura di un documento, dal browser. Non contano:
-// utenti dell'area interna, contatti di prova, portale non attivo.
+// Visita di una scheda o apertura di un documento, dal browser (vedi
+// contestoDaTracciare).
 export async function segnalaVista(token: unknown, operazioneId: unknown, tipo: unknown, fileId?: unknown): Promise<void> {
   if (typeof operazioneId !== "string" || !TIPI_VISTA.includes(tipo as never)) return;
-  const ctx = await contestoLink(token);
-  if (!ctx || ctx.modalita !== "attivo" || ctx.investitore.prova) return;
-  if (await utenteInterno()) return;
+  const ctx = await contestoDaTracciare(token);
+  if (!ctx) return;
   const v = await operazioneDelCliente(ctx.investitore.rif, ctx.risposte, operazioneId);
   if (!v) return;
   if (tipo === "operazione-vista-dettaglio" && v.op.livello !== "completa") return;
@@ -97,4 +112,17 @@ export async function segnalaVista(token: unknown, operazioneId: unknown, tipo: 
     if (!file) return;
   }
   await registraVistaCliente(ctx.investitore.rif, operazioneId, tipo as (typeof TIPI_VISTA)[number], file);
+}
+
+// Simulazione eseguita nel portale (dal browser, dopo che il cliente ha
+// scelto l'importo): importo portato nei limiti del simulatore.
+export async function segnalaSimulazione(token: unknown, operazioneId: unknown, importo: unknown): Promise<void> {
+  if (typeof operazioneId !== "string" || typeof importo !== "number" || !Number.isFinite(importo)) return;
+  const ctx = await contestoDaTracciare(token);
+  if (!ctx) return;
+  const v = await operazioneDelCliente(ctx.investitore.rif, ctx.risposte, operazioneId);
+  if (!v) return;
+  const limiti = limitiSimulatore({ formula: v.op.quota ? "quota" : "intera", minimoEuro: v.op.investimentoMinimoEuro }, massimoCapitale(ctx.risposte));
+  if (!limiti) return;
+  await registraSimulazione(ctx.investitore.rif, operazioneId, importoNeiLimiti(Math.round(importo), limiti));
 }

@@ -43,6 +43,9 @@ export type OperazioneCliente = {
   investimentoMinimo: number | null; // nella valuta dell'operazione
   investimentoMinimoEuro: number | null; // minimo dell'importo indicativo (euro)
   rendimentoBase: number | null;
+  // I tre scenari servono anche al simulatore della scheda sintetica.
+  rendimentoPessimista: number | null;
+  rendimentoOttimista: number | null;
   durataStimataMesi: number | null;
   finanziabile: boolean;
   descrizione: string | null; // breve nella sintetica
@@ -114,6 +117,8 @@ export function operazionePerCliente(op: OperazioneDati, file: FileMostrato[], l
     investimentoMinimo: ticketMinimo(op),
     investimentoMinimoEuro: ticketMinimoEuro(op),
     rendimentoBase: op.rendimentoBase,
+    rendimentoPessimista: op.rendimentoPessimista,
+    rendimentoOttimista: op.rendimentoOttimista,
     durataStimataMesi: op.durataStimataMesi,
     finanziabile: op.finanziabile,
     descrizione: completa ? op.descrizione : breve(op.descrizione),

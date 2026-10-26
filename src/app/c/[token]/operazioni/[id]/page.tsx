@@ -12,6 +12,8 @@ import { operazioneDelCliente } from "@/lib/operazioni/interessi";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import { NOINDEX, renderPaginaMessaggio, TESTO_FASCIA_PROVA, TESTO_IN_PREPARAZIONE, TESTO_LINK_NON_VALIDO } from "@/app/portale-ui";
 import SchedaCliente from "./SchedaCliente";
+import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
+import { massimoCapitale } from "@/lib/compatibilita";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,8 @@ export default async function OperazioneClientePage({ params }: { params: Promis
       token={token}
       voce={voce}
       avvertenza={imp.testoAvvertenzaOperazioni || TESTO_AVVERTENZA_PREDEFINITO}
+      avvertenzaSimulatore={imp.testoAvvertenzaSimulatore || AVVERTENZA_SIMULATORE_PREDEFINITA}
+      massimoCliente={massimoCapitale(risposte)}
       testoLegale={voce.op.quota ? (imp.testoLegaleQuote ?? "") : null}
       referente={investitore.referente}
       contattoIniziale={contatto}

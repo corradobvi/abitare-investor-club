@@ -66,6 +66,11 @@ async function main() {
       testoAvvertenzaOperazioni:
         "I rendimenti indicati sono stime e non sono garantiti. Ogni investimento immobiliare comporta rischi, " +
         "inclusa la possibile perdita parziale o totale del capitale investito.",
+      // Avvertenza sotto i risultati del simulatore.
+      // Uguale a AVVERTENZA_SIMULATORE_PREDEFINITA in src/lib/simulatore.ts.
+      testoAvvertenzaSimulatore:
+        "Simulazione indicativa basata su stime: valori al lordo di imposte e costi personali, non garantiti. " +
+        "Il finanziamento bancario non è incluso: parlane con il tuo consulente.",
       // Testo del legale per le operazioni in quote: lo compila l'Admin.
       // Finche' e' vuoto le operazioni in quote non si possono pubblicare.
       testoLegaleQuote: "",

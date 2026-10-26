@@ -13,6 +13,8 @@ import type { Risposte } from "@/lib/profilo/domande";
 import { invitiPerRif, statoInvito, type StatoInvito } from "@/lib/inviti";
 import { contattiNuoviInElenco, contattoNuovoInElenco, referenteComeAssegnato } from "@/lib/nuovi-investitori";
 import { chiaveDiRif, rifDaChiave, type Rif } from "@/lib/riferimento";
+import { ricalcolaPunteggi } from "@/lib/punteggio-dati";
+import type { Fascia } from "@/lib/punteggio";
 
 // Investitore dell'area interna: cliente del CRM oppure nuovo della lista
 // temporanea. Per i nuovi il referente scelto nel Club fa da "consulente
@@ -112,6 +114,8 @@ export type RigaElenco = {
   risposte: Risposte;
   avvisi: string[];
   invito: StatoInvito;
+  // Punteggio d'interesse (src/lib/punteggio.ts); null dove non calcolato.
+  interesse: { punteggio: number; fascia: Fascia } | null;
 };
 
 export function nomeCompleto(c: { nome: string | null; cognome: string | null }): string {
@@ -151,6 +155,7 @@ function rigaElenco(
     risposte,
     avvisi: avvisiCoerenza(risposte),
     invito,
+    interesse: null,
   };
 }
 
@@ -173,19 +178,20 @@ async function investitoriCompleti(utente: UtenteClub) {
   }));
 }
 
-// Elenco della Home, senza i contatti di prova: sono loro a fare totali,
-// sequenza di lavoro e Novita'.
-export async function elencoPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
-  return (await investitoriCompleti(utente))
-    .filter((x) => !x.investitore.prova)
-    .map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
-}
-
-// Contatti di prova visibili all'utente, per il loro riquadro in Home.
-export async function contattiProvaPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
-  return (await investitoriCompleti(utente))
-    .filter((x) => x.investitore.prova)
-    .map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
+// Elenco della Home diviso: investitori (totali, sequenza di lavoro, Novita')
+// e contatti di prova (riquadro a parte). All'apertura dell'elenco si
+// ricalcolano e salvano i punteggi d'interesse di tutti i visibili.
+export async function elencoConProva(utente: UtenteClub): Promise<{ righe: RigaElenco[]; prova: RigaElenco[] }> {
+  const tutti = await investitoriCompleti(utente);
+  const punteggi = await ricalcolaPunteggi(tutti.map((x) => x.investitore.rif));
+  const righe = tutti.map((x) => {
+    const p = punteggi.get(x.investitore.chiave);
+    return {
+      riga: { ...rigaElenco(x.investitore, x.referente, x.profilo, x.link), interesse: p ? { punteggio: p.punteggio, fascia: p.fascia } : null },
+      prova: x.investitore.prova,
+    };
+  });
+  return { righe: righe.filter((x) => !x.prova).map((x) => x.riga), prova: righe.filter((x) => x.prova).map((x) => x.riga) };
 }
 
 // Investitore da valutare per le operazioni (sezione "Investitori compatibili").

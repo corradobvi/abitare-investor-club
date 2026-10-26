@@ -10,6 +10,7 @@ import {
   salvaReferenteDefault,
   salvaTestoAvvertenza,
   salvaTestoLegaleQuote,
+  salvaTestoSimulatore,
   salvaUrlInformativa,
 } from "./azioni";
 
@@ -21,6 +22,7 @@ type Props = {
   messaggioNuovi: string;
   urlInformativa: string;
   avvertenza: string;
+  avvertenzaSimulatore: string;
   testoLegale: string;
   messaggioProposta: string;
 };
@@ -73,6 +75,7 @@ export default function FormImpostazioni(props: Props) {
     urlInformativa: props.urlInformativa,
     referente: props.referenteDefault,
     avvertenza: props.avvertenza,
+    avvertenzaSimulatore: props.avvertenzaSimulatore,
     testoLegale: props.testoLegale,
     messaggioProposta: props.messaggioProposta,
   });
@@ -83,6 +86,7 @@ export default function FormImpostazioni(props: Props) {
     urlInformativa: null,
     referente: null,
     avvertenza: null,
+    avvertenzaSimulatore: null,
     testoLegale: null,
     messaggioProposta: null,
   });
@@ -181,6 +185,15 @@ export default function FormImpostazioni(props: Props) {
         </p>
         <textarea className="campo" rows={4} value={valori.avvertenza} onChange={(e) => cambia("avvertenza", e.target.value)} />
         {renderPulsante("avvertenza", "Salva avvertenza", salvaTestoAvvertenza, "Avvertenza salvata.")}
+      </section>
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Avvertenza del simulatore</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Testo fisso sotto i risultati di &quot;Simula il tuo investimento&quot;, insieme all&apos;avvertenza delle schede.
+        </p>
+        <textarea className="campo" rows={3} value={valori.avvertenzaSimulatore} onChange={(e) => cambia("avvertenzaSimulatore", e.target.value)} />
+        {renderPulsante("avvertenzaSimulatore", "Salva avvertenza", salvaTestoSimulatore, "Avvertenza del simulatore salvata.")}
       </section>
 
       <section className="riquadro">

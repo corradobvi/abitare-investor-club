@@ -8,6 +8,7 @@ import { schedaPerUtente } from "@/lib/investitori";
 import { RispostaNonValida, salvaProfiloDaConsulente } from "@/lib/profilo/archivio";
 import { creaOppureRiusaInvito, invitoMostrato, revocaInvito, type InvitoMostrato } from "@/lib/inviti";
 import { modificaContattoNuovo, type DatiInviati, type EsitoNuovo } from "@/lib/nuovi-investitori";
+import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
 
 type Esito<T = undefined> = { ok: true; dati?: T } | { ok: false; errore: string };
 
@@ -23,6 +24,7 @@ export async function salvaProfilo(chiave: string, risposte: Record<string, unkn
     if (e instanceof RispostaNonValida) return { ok: false, errore: "Una risposta non è valida: ricarica la pagina e riprova." };
     throw e;
   }
+  await ricalcolaPunteggio(scheda.investitore.rif);
   revalidatePath("/");
   revalidatePath(`/investitori/${chiave}`);
   return { ok: true };

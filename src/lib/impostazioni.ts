@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
+import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 
 // Impostazioni del Club (tabella ClubImpostazione, chiave/valore). Le chiavi
 // sono in italiano camelCase; i valori iniziali li scrive
@@ -33,6 +34,8 @@ export const CHIAVI_IMPOSTAZIONI = [
   // Cellulare WhatsApp dei referenti, mostrato al cliente nel portale: JSON
   // { "<id User del CRM>": "+39..." } (vedi cellulareReferente).
   "cellulariReferenti",
+  // Avvertenza fissa sotto i risultati del simulatore d'investimento.
+  "testoAvvertenzaSimulatore",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];
@@ -72,6 +75,7 @@ const PREDEFINITI: Partial<Impostazioni> = {
   messaggioInvitoNuoviWhatsApp: MESSAGGIO_INVITO_NUOVI_PREDEFINITO,
   testoAvvertenzaOperazioni: TESTO_AVVERTENZA_PREDEFINITO,
   messaggioPropostaOperazioneWhatsApp: MESSAGGIO_PROPOSTA_PREDEFINITO,
+  testoAvvertenzaSimulatore: AVVERTENZA_SIMULATORE_PREDEFINITA,
 };
 
 export async function leggiImpostazioni(): Promise<Impostazioni> {
@@ -94,6 +98,7 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "testoLegaleQuote",
   "messaggioPropostaOperazioneWhatsApp",
   "cellulariReferenti",
+  "testoAvvertenzaSimulatore",
 ] as const;
 
 export type ImpostazioneModificabile = (typeof IMPOSTAZIONI_MODIFICABILI)[number];

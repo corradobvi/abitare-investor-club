@@ -1,5 +1,6 @@
 // Pannello "Novità" della Home, solo sugli investitori visibili all'utente:
-// manifestazioni d'interesse nuove (prima in elenco), profili completati (14
+// clienti diventati caldi (14 giorni, prima di tutto; mai i contatti di
+// prova), manifestazioni d'interesse nuove, profili completati (14
 // giorni), registrazioni da confermare, aperture del link (7 giorni),
 // registrazioni doppione (14 giorni). I contatti di prova non contano: le
 // loro manifestazioni compaiono col segno PROVA ma fuori dal conteggio.
@@ -10,6 +11,7 @@ import { chiaveDiRif, chiaveDiRiga, filtroPerRif, rifDaChiave, type Rif } from "
 import { data, dataOra } from "@/lib/date";
 import { euro } from "@/lib/numeri";
 import { manifestazioniDiRif } from "@/lib/operazioni/interessi";
+import { diventatiCaldi } from "@/lib/punteggio-dati";
 
 export type VoceNovita = {
   chiave: string | null; // scheda da aprire, se visibile
@@ -20,6 +22,7 @@ export type VoceNovita = {
 };
 
 export type Novita = {
+  caldi: VoceNovita[];
   manifestazioni: VoceNovita[];
   completati: VoceNovita[];
   daConfermare: VoceNovita[];
@@ -55,7 +58,8 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[], r
     .map((r) => rifDaChiave(r.chiave))
     .flatMap((r) => (r && "contattoNuovoId" in r ? [r.contattoNuovoId] : []));
 
-  const [manifestazioni, profili, contatti, aperture, doppioni] = await Promise.all([
+  const [caldi, manifestazioni, profili, contatti, aperture, doppioni] = await Promise.all([
+    diventatiCaldi(rifs, 14),
     manifestazioniDiRif(rifsConProva, true),
     rifs.length
       ? prisma.clubProfiloInvestitore.findMany({
@@ -107,6 +111,12 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[], r
   );
 
   return {
+    caldi: caldi.slice(0, MASSIMO_PER_VOCE).map((c) => ({
+      chiave: c.chiave,
+      nome: nomi.get(c.chiave) ?? "—",
+      quando: dataOra(c.quando),
+      dettaglio: `punteggio ${c.punteggio}`,
+    })),
     manifestazioni: manifestazioni.slice(0, MASSIMO_PER_VOCE * 2).map((m) => ({
       chiave: m.chiaveInvestitore,
       nome: nomi.get(m.chiaveInvestitore) ?? nomiProva.get(m.chiaveInvestitore) ?? "—",

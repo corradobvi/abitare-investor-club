@@ -20,6 +20,7 @@ import { operazionePerCliente, type LivelloCliente, type OperazioneCliente } fro
 import type { Risposte } from "@/lib/profilo/domande";
 import type { UtenteClub } from "@/lib/permessi";
 import { chiaveDiRif, chiaveDiRiga, filtroPerRif, type Rif } from "@/lib/riferimento";
+import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
 
 const ORDINE_FILE = [{ tipo: "asc" as const }, { ordine: "asc" as const }, { createdAt: "asc" as const }];
 
@@ -199,6 +200,7 @@ export async function manifestaInteresse(
     }
     throw e;
   }
+  await ricalcolaPunteggio(rif);
   return { ok: true };
 }
 
@@ -214,6 +216,7 @@ export async function ritiraInteresse(rif: Rif, manifestazioneId: string): Promi
   await prisma.clubEvento.create({
     data: { ...rif, operazioneId: m!.operazioneId, tipo: "interesse-ritirato", dati: { manifestazioneId } },
   });
+  await ricalcolaPunteggio(rif);
   return { ok: true };
 }
 
@@ -246,6 +249,7 @@ export async function cambiaStatoInteresse(utente: UtenteClub, manifestazioneId:
     }
     throw e;
   }
+  await ricalcolaPunteggio(m.clienteId ? { clienteId: m.clienteId } : { contattoNuovoId: m.contattoNuovoId! });
   return { ok: true };
 }
 
@@ -367,5 +371,27 @@ export async function registraVista(rif: Rif, operazioneId: string, tipo: TipoVi
   await prisma.clubEvento.create({
     data: { ...rif, operazioneId, tipo, dati: file ? { fileId: file.id, nome: file.nome } : {} },
   });
+  await ricalcolaPunteggio(rif);
   return true;
+}
+
+const INTERVALLO_SIMULAZIONI_MS = 10 * 60 * 1000;
+
+// Simulazione dal portale: al massimo un evento ogni 10 minuti per
+// investitore e operazione; nella stessa finestra resta l'importo piu' alto.
+// Ritorna true se ha creato un evento nuovo.
+export async function registraSimulazione(rif: Rif, operazioneId: string, importo: number): Promise<boolean> {
+  const recente = await prisma.clubEvento.findFirst({
+    where: { ...rif, operazioneId, tipo: "simulazione-eseguita", creatoIl: { gte: new Date(Date.now() - INTERVALLO_SIMULAZIONI_MS) } },
+    orderBy: { creatoIl: "desc" },
+  });
+  if (recente) {
+    const prima = ((recente.dati ?? {}) as Record<string, unknown>).importo;
+    if (typeof prima === "number" && prima >= importo) return false;
+    await prisma.clubEvento.update({ where: { id: recente.id }, data: { dati: { importo } } });
+  } else {
+    await prisma.clubEvento.create({ data: { ...rif, operazioneId, tipo: "simulazione-eseguita", dati: { importo } } });
+  }
+  await ricalcolaPunteggio(rif);
+  return !recente;
 }

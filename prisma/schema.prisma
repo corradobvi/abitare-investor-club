@@ -115,6 +115,19 @@ model ClubSbloccoOperazione {
   @@unique([operazioneId, contattoNuovoId])
 }
 
+// Punteggio d'interesse di un investitore (src/lib/punteggio.ts), salvato per
+// elenco, ordinamenti e avviso "cliente diventato caldo". Esattamente uno tra
+// clienteId e contattoNuovoId (vincolo CHECK nella migrazione). Si ricalcola a
+// ogni evento del soggetto e al caricamento dell'elenco investitori.
+model ClubPunteggio {
+  id              String   @id @default(cuid())
+  clienteId       String?  @unique
+  contattoNuovoId String?  @unique
+  punteggio       Int // 0..100
+  fascia          String // freddo | tiepido | caldo
+  aggiornatoIl    DateTime @updatedAt
+}
+
 // Disiscrizione dalle proposte di operazioni: un token personale per
 // investitore (link /stop/<token> nel messaggio WhatsApp, solo a portale
 // attivo). disiscrittoIl valorizzato = non riceve piu' proposte: non compare
@@ -138,7 +151,7 @@ model ClubEvento {
   clienteId       String?
   contattoNuovoId String?
   operazioneId    String?
-  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta | proposte-disattivate | proposte-riattivate | contatto-prova-creato | interesse-manifestato | interesse-ritirato | interesse-stato-cambiato | operazione-sbloccata | operazione-vista-anteprima | operazione-vista-dettaglio | documento-scaricato
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta | proposte-disattivate | proposte-riattivate | contatto-prova-creato | interesse-manifestato | interesse-ritirato | interesse-stato-cambiato | operazione-sbloccata | operazione-vista-anteprima | operazione-vista-dettaglio | documento-scaricato | simulazione-eseguita | cliente-diventato-caldo
   dati            Json?
   creatoIl        DateTime @default(now())
 

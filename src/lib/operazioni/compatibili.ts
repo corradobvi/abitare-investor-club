@@ -14,6 +14,7 @@ import type { OperazioneDati } from "@/lib/operazioni/definizioni";
 import type { Risposte } from "@/lib/profilo/domande";
 import type { Fase } from "@/lib/profilo/fase";
 import type { UtenteClub } from "@/lib/permessi";
+import { perSimulatore, type OperazionePerSimulatore } from "@/lib/simulatore";
 
 export type InvestitoreCompatibile = Compatibilita & {
   chiave: string;
@@ -110,14 +111,14 @@ export async function conteggiCompatibili(
   );
 }
 
-export type OperazioneCompatibile = Compatibilita & { id: string; codice: string; titolo: string };
+export type OperazioneCompatibile = Compatibilita & { id: string; codice: string; titolo: string; simulatore: OperazionePerSimulatore };
 
 // Per la scheda investitore: solo le operazioni pubblicate.
 export async function operazioniCompatibili(utente: UtenteClub, risposte: Risposte): Promise<OperazioneCompatibile[]> {
   if (!profiloValutabile(risposte)) return [];
   const ops = (await operazioniPerUtente(utente)).map((x) => x.op).filter((op) => op.stato === "pubblicata");
   return ops
-    .map((op) => ({ ...compatibilita(risposte, op), id: op.id, codice: op.codice, titolo: op.titolo }))
+    .map((op) => ({ ...compatibilita(risposte, op), id: op.id, codice: op.codice, titolo: op.titolo, simulatore: perSimulatore(op) }))
     .filter((c) => c.compatibile)
     .sort((a, b) => b.punteggio - a.punteggio || a.codice.localeCompare(b.codice));
 }

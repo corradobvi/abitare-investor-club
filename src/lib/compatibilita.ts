@@ -65,6 +65,13 @@ const MASSIMO_CAPITALE: Record<string, number> = {
   "oltre-500k": Infinity,
 };
 
+// Massimo della fascia di capitale del cliente (null = non indicato,
+// Infinity = nessun limite). Usato anche dal simulatore per la barra.
+export function massimoCapitale(r: Risposte | null | undefined): number | null {
+  const c = typeof r?.capitale === "string" ? r.capitale : "";
+  return c in MASSIMO_CAPITALE ? MASSIMO_CAPITALE[c] : null;
+}
+
 // Minimo della fascia di rendimento desiderata (% annuo).
 const MINIMO_RENDIMENTO_FLIPPING: Record<string, number> = { "fino-12": 0, "12-18": 12, "18-25": 18, "oltre-25": 25 };
 const MINIMO_RENDIMENTO_RENDITA: Record<string, number> = { "3-5": 3, "5-7": 5, "7-9": 7, "oltre-9": 9 };

@@ -12,12 +12,15 @@ import { costoTotale, importoMostrato, statoInteresseMostrato } from "@/lib/oper
 import { euro, intero, leggiImporto, percentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
 import { renderFasciaAnteprima, renderMarchio } from "@/app/portale-ui";
-import { inviaManifestazione, ritiraManifestazione, segnalaVista } from "../../azioni";
+import { inviaManifestazione, ritiraManifestazione, segnalaSimulazione, segnalaVista } from "../../azioni";
+import RiquadroSimulatore from "@/app/RiquadroSimulatore";
 
 type Props = {
   token: string;
   voce: VoceCliente;
   avvertenza: string;
+  avvertenzaSimulatore: string;
+  massimoCliente: number | null; // massimo della fascia di capitale del cliente
   testoLegale: string | null; // solo per le quote
   referente: string | null;
   contattoIniziale: string;
@@ -34,7 +37,18 @@ const CONTATTI = [
 const PRESA_VISIONE =
   "Ho compreso che questa è una manifestazione di interesse non vincolante e che i rendimenti indicati sono stime non garantite";
 
-export default function SchedaCliente({ token, voce, avvertenza, testoLegale, referente, contattoIniziale, salva, fascia }: Props) {
+export default function SchedaCliente({
+  token,
+  voce,
+  avvertenza,
+  avvertenzaSimulatore,
+  massimoCliente,
+  testoLegale,
+  referente,
+  contattoIniziale,
+  salva,
+  fascia,
+}: Props) {
   const router = useRouter();
   const op = voce.op;
   const base = `/c/${token}`;
@@ -88,6 +102,35 @@ export default function SchedaCliente({ token, voce, avvertenza, testoLegale, re
       setGrazie(false);
       router.refresh();
     });
+  }
+
+  // Dal simulatore: apre la manifestazione con l'importo scelto.
+  function interessatoCon(n: number) {
+    setImporto(intero(n));
+    setErrore("");
+    setModulo(true);
+    setTimeout(() => document.getElementById("importo")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  }
+
+  function renderSimulatore() {
+    return (
+      <RiquadroSimulatore
+        op={{
+          rendita: op.rendita,
+          formula: op.quota ? "quota" : "intera",
+          rendimentoPessimista: op.rendimentoPessimista,
+          rendimentoBase: op.rendimentoBase,
+          rendimentoOttimista: op.rendimentoOttimista,
+          durataStimataMesi: op.durataStimataMesi,
+          minimoEuro: op.investimentoMinimoEuro,
+        }}
+        massimoCliente={massimoCliente}
+        avvertenzaSimulatore={avvertenzaSimulatore}
+        avvertenzaOperazioni={avvertenza}
+        onSimulazione={salva ? (n) => segnalaSimulazione(token, op.id, n).catch(() => {}) : undefined}
+        onInteressato={op.stato === "pubblicata" && !attiva ? interessatoCon : undefined}
+      />
+    );
   }
 
   function apriDocumento(fileId: string) {
@@ -398,6 +441,7 @@ export default function SchedaCliente({ token, voce, avvertenza, testoLegale, re
         {renderTesto("Punti di forza", op.puntiDiForza)}
         {renderEstero()}
         {completa ? renderDettagli() : null}
+        {renderSimulatore()}
         {renderInteresse()}
         {renderAvvertenze()}
       </div>

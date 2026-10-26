@@ -16,6 +16,13 @@ import ModuloContatto from "../../ModuloContatto";
 import PulsantiConferma from "../../PulsantiConferma";
 import PulsanteSblocca from "../../PulsanteSblocca";
 import StatoManifestazione from "../../StatoManifestazione";
+import RiquadroSimulatore from "@/app/RiquadroSimulatore";
+import { renderInteresse } from "../../interesse-ui";
+import { ricalcolaPunteggi } from "@/lib/punteggio-dati";
+import { fasciaMostrata, type Punteggio } from "@/lib/punteggio";
+import { massimoCapitale } from "@/lib/compatibilita";
+import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
+import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import SchedaProfilo from "./SchedaProfilo";
 import { salvaDatiNuovo } from "./azioni";
 
@@ -30,7 +37,9 @@ function renderDato(etichetta: string, valore: React.ReactNode) {
   );
 }
 
-function renderOperazione(o: OperazioneCompatibile, chiave: string, sbloccate: Set<string>, interessate: Set<string>) {
+type Avvertenze = { simulatore: string; operazioni: string; massimoCliente: number | null };
+
+function renderOperazione(o: OperazioneCompatibile, chiave: string, sbloccate: Set<string>, interessate: Set<string>, avvertenze: Avvertenze) {
   return (
     <li key={o.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -48,13 +57,56 @@ function renderOperazione(o: OperazioneCompatibile, chiave: string, sbloccate: S
           <PulsanteSblocca operazioneId={o.id} chiave={chiave} sbloccata={sbloccate.has(o.id)} />
         )}
       </div>
+      <RiquadroSimulatore
+        op={o.simulatore}
+        massimoCliente={avvertenze.massimoCliente}
+        avvertenzaSimulatore={avvertenze.simulatore}
+        avvertenzaOperazioni={avvertenze.operazioni}
+        titolo="Simula l'investimento per questo cliente"
+      />
     </li>
   );
 }
 
 const CONTATTO: Record<string, string> = { whatsapp: "WhatsApp", telefono: "telefono", email: "email" };
 
-function renderInteresse(m: ManifestazioneInterna, titoli: Map<string, string>) {
+// Punteggio d'interesse: fascia, ultime attivita' e prossima azione suggerita.
+function renderPunteggio(p: Punteggio, prova: boolean) {
+  const f = fasciaMostrata(p.fascia);
+  return (
+    <section className="riquadro" style={{ marginTop: 20, borderLeft: `4px solid ${f.colore}` }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <h2 className="titolo" style={{ fontSize: 22 }}>
+          Interesse {prova ? <span className="badge allerta" style={{ verticalAlign: "middle" }}>PROVA</span> : null}
+        </h2>
+        <span style={{ fontSize: 18 }}>{renderInteresse(p)}</span>
+      </div>
+      <div className="avvertenza" style={{ marginTop: 10, fontSize: 15, fontWeight: 600, whiteSpace: "normal" }}>
+        Prossima azione suggerita: {p.prossimaAzione}
+      </div>
+      <h3 style={{ fontSize: 15, margin: "14px 0 4px" }}>Ultime attività</h3>
+      {p.attivita.length ? (
+        <ul style={{ listStyle: "none" }}>
+          {p.attivita.map((a, i) => (
+            <li key={i} style={{ fontSize: 13, padding: "5px 0", borderTop: i ? "1px solid var(--off-white)" : "none" }}>
+              <strong>{a.descrizione}</strong>
+              {a.operazione ? ` · ${a.operazione}` : ""}
+              {a.importo !== null ? ` · ${euro(a.importo)}` : ""}
+              <span className="tenue"> · {dataOra(a.quando)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="tenue" style={{ fontSize: 13 }}>Nessuna attività negli ultimi 60 giorni.</p>
+      )}
+      <p className="tenue" style={{ fontSize: 11, marginTop: 8 }}>
+        Punteggio da 0 a 100: profilo, accessi, schede e documenti visti, simulazioni, manifestazioni d&apos;interesse e disponibilità del capitale.
+      </p>
+    </section>
+  );
+}
+
+function renderManifestazione(m: ManifestazioneInterna, titoli: Map<string, string>) {
   return (
     <li key={m.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -88,14 +140,21 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) notFound();
   const { investitore, referente, profilo, impostazioni } = scheda;
-  const [link, compatibili, disiscrizioni, interessi, sbloccate, operazioni] = await Promise.all([
+  const [link, compatibili, disiscrizioni, interessi, sbloccate, operazioni, punteggi] = await Promise.all([
     invitoAttivo(investitore.rif),
     operazioniCompatibili(utente, rispostePerProfilo(profilo)),
     disiscrizioniPerRif([investitore.rif]),
     manifestazioniInvestitore(investitore.rif),
     operazioniSbloccate(investitore.rif),
     operazioniPerUtente(utente),
+    ricalcolaPunteggi([investitore.rif]),
   ]);
+  const punteggio = punteggi.get(investitore.chiave);
+  const avvertenze: Avvertenze = {
+    simulatore: impostazioni.testoAvvertenzaSimulatore || AVVERTENZA_SIMULATORE_PREDEFINITA,
+    operazioni: impostazioni.testoAvvertenzaOperazioni || TESTO_AVVERTENZA_PREDEFINITO,
+    massimoCliente: massimoCapitale(rispostePerProfilo(profilo)),
+  };
   // Solo le operazioni che l'utente puo' vedere.
   const titoli = new Map(operazioni.map((x) => [x.op.id, `${x.op.titolo} · ${x.op.codice}`]));
   const interessiVisibili = interessi.filter((m) => titoli.has(m.operazioneId));
@@ -216,13 +275,15 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
         invitoIniziale={link ? invitoMostrato(link, investitore, impostazioni) : null}
       />
 
+      {punteggio ? renderPunteggio(punteggio, investitore.prova) : null}
+
       <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22 }}>Interessi ({interessiVisibili.length})</h2>
         <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
           Manifestazioni d&apos;interesse dal portale: importi indicativi in euro, non vincolanti.
         </p>
         {interessiVisibili.length ? (
-          <ul style={{ listStyle: "none", marginTop: 8 }}>{interessiVisibili.map((m) => renderInteresse(m, titoli))}</ul>
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{interessiVisibili.map((m) => renderManifestazione(m, titoli))}</ul>
         ) : (
           <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessuna manifestazione d&apos;interesse.</p>
         )}
@@ -240,7 +301,7 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
           </p>
         ) : null}
         {compatibili.length ? (
-          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map((o) => renderOperazione(o, investitore.chiave, sbloccate, interessate))}</ul>
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map((o) => renderOperazione(o, investitore.chiave, sbloccate, interessate, avvertenze))}</ul>
         ) : (
           <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessuna operazione pubblicata è compatibile con il profilo.</p>
         )}

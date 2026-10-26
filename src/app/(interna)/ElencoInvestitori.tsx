@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { RigaElenco } from "@/lib/investitori";
 import { DOMANDE_PER_CHIAVE, etichettaRisposta, type ChiaveDomanda } from "@/lib/profilo/domande";
 import { contaPerFase, FASI, type Fase } from "@/lib/profilo/fase";
+import { FASCE, fasciaMostrata } from "@/lib/punteggio";
+import { renderInteresse } from "./interesse-ui";
 import PulsantiConferma from "./PulsantiConferma";
 
 type Filtri = {
@@ -19,6 +21,7 @@ type Filtri = {
   completezza: string;
   referente: string;
   invitato: string;
+  interesse: string; // fascia: caldo | tiepido | freddo
 };
 
 const FILTRI_VUOTI: Filtri = {
@@ -34,6 +37,7 @@ const FILTRI_VUOTI: Filtri = {
   completezza: "",
   referente: "",
   invitato: "",
+  interesse: "",
 };
 
 // Filtri che corrispondono 1:1 a una domanda del profilo.
@@ -64,8 +68,18 @@ function passaFiltri(r: RigaElenco, f: Filtri): boolean {
   if (f.referente && (r.referente.userId ?? "") !== f.referente) return false;
   if (f.invitato === "si" && !r.invito.invitato) return false;
   if (f.invitato === "no" && r.invito.invitato) return false;
+  if (f.interesse && r.interesse?.fascia !== f.interesse) return false;
   return true;
 }
+
+type Ordine = "nome" | "interesse";
+
+// Interesse: punteggio piu' alto prima (a parita', l'ordine per nome).
+function ordina(righe: RigaElenco[], ordine: Ordine): RigaElenco[] {
+  if (ordine === "nome") return righe;
+  return [...righe].sort((a, b) => (b.interesse?.punteggio ?? -1) - (a.interesse?.punteggio ?? -1));
+}
+
 
 function renderSelect(
   etichetta: string,
@@ -143,6 +157,7 @@ function renderRiga(r: RigaElenco) {
         {r.referente.nome} {r.referente.default ? <span className="badge sabbia">default</span> : null}
       </td>
       <td>{r.stato ?? <span className="tenue">—</span>}</td>
+      <td>{renderInteresse(r.interesse)}</td>
       <td style={{ minWidth: 200 }}>{renderCompletezza(r)}</td>
       <td>{renderRisposta(r, "obiettivo")}</td>
       <td style={{ whiteSpace: "nowrap" }}>{renderRisposta(r, "capitale")}</td>
@@ -167,9 +182,18 @@ function renderRiga(r: RigaElenco) {
 
 export default function ElencoInvestitori({ righe }: { righe: RigaElenco[] }) {
   const [filtri, setFiltri] = useState<Filtri>(FILTRI_VUOTI);
+  const [ordine, setOrdine] = useState<Ordine>("nome");
   const imposta = (k: keyof Filtri) => (v: string) => setFiltri((f) => ({ ...f, [k]: v }));
 
-  const visibili = useMemo(() => righe.filter((r) => passaFiltri(r, filtri)), [righe, filtri]);
+  const visibili = useMemo(() => ordina(righe.filter((r) => passaFiltri(r, filtri)), ordine), [righe, filtri, ordine]);
+  const caldi = useMemo(() => righe.filter((r) => r.interesse?.fascia === "caldo").length, [righe]);
+
+  // Riquadro "clienti caldi": mostra solo loro, ordinati per interesse.
+  function soloCaldi() {
+    setFiltri(filtri.interesse === "caldo" ? FILTRI_VUOTI : { ...FILTRI_VUOTI, interesse: "caldo" });
+    setOrdine("interesse");
+    document.getElementById("elenco")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
   const perFase = useMemo(() => contaPerFase(righe.map((r) => r.fase)), [righe]);
   const nuovi = useMemo(() => righe.filter((r) => r.nuovo).length, [righe]);
 
@@ -223,6 +247,20 @@ export default function ElencoInvestitori({ righe }: { righe: RigaElenco[] }) {
           </div>
           <div className="sequenza">{FASI.map(renderTappa)}</div>
         </div>
+        <button
+          type="button"
+          className={filtri.interesse === "caldo" ? "tappa attiva" : "tappa"}
+          aria-pressed={filtri.interesse === "caldo"}
+          onClick={soloCaldi}
+          style={{ alignSelf: "stretch" }}
+        >
+          <span className="tappa-etichetta" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: fasciaMostrata("caldo").colore, display: "inline-block" }} />
+            Clienti caldi
+          </span>
+          <span className="tappa-valore">{caldi}</span>
+          <span className="tenue" style={{ fontSize: 11 }}>clicca per vederli</span>
+        </button>
       </section>
 
       <section id="elenco" className="riquadro" style={{ marginBottom: 20, scrollMarginTop: 16 }}>
@@ -252,6 +290,14 @@ export default function ElencoInvestitori({ righe }: { righe: RigaElenco[] }) {
             imposta("completezza"),
           )}
           {renderSelect("Referente", filtri.referente, referenti, imposta("referente"))}
+          {renderSelect("Interesse", filtri.interesse, FASCE, imposta("interesse"))}
+          <div>
+            <label className="etichetta">Ordina per</label>
+            <select className="campo" value={ordine} onChange={(e) => setOrdine(e.target.value as Ordine)}>
+              <option value="nome">Nome</option>
+              <option value="interesse">Interesse (più alto prima)</option>
+            </select>
+          </div>
           {renderSelect(
             "Invitato",
             filtri.invitato,
@@ -282,6 +328,7 @@ export default function ElencoInvestitori({ righe }: { righe: RigaElenco[] }) {
                 <th>Nome e cognome</th>
                 <th>Referente</th>
                 <th>Stato CRM</th>
+                <th>Interesse</th>
                 <th>Profilo</th>
                 <th>Obiettivo</th>
                 <th>Capitale</th>
@@ -296,7 +343,7 @@ export default function ElencoInvestitori({ righe }: { righe: RigaElenco[] }) {
               {visibili.map(renderRiga)}
               {visibili.length === 0 ? (
                 <tr>
-                  <td colSpan={11} className="tenue" style={{ textAlign: "center", padding: 28 }}>
+                  <td colSpan={12} className="tenue" style={{ textAlign: "center", padding: 28 }}>
                     Nessun investitore con questi filtri.
                   </td>
                 </tr>

@@ -11,6 +11,7 @@ import { dataOra, giornoMese } from "@/lib/date";
 import { linkWhatsapp, numeroWhatsapp } from "@/lib/telefono";
 import { componiMessaggioInvito, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { chiaveDiRiga, filtroPerRif, type Rif } from "@/lib/riferimento";
+import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
 
 // 32 byte casuali in base64url = 43 caratteri.
 export function nuovoToken(): string {
@@ -78,6 +79,7 @@ export async function apriInvito(token: string): Promise<ClubLinkInvito | null> 
       },
     }),
   ]);
+  await ricalcolaPunteggio(link.clienteId ? { clienteId: link.clienteId } : { contattoNuovoId: link.contattoNuovoId! });
   return aggiornato;
 }
 

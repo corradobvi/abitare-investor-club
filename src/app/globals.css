@@ -71,7 +71,7 @@ a { color: inherit; }
 }
 
 /* Riepilogo in Home: totale + sequenza di lavoro a 4 riquadri cliccabili. */
-.riepilogo { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 3fr); gap: 16px; align-items: stretch; }
+.riepilogo { display: grid; grid-template-columns: minmax(200px, 1fr) minmax(0, 3fr) minmax(150px, 1fr); gap: 16px; align-items: stretch; }
 @media (max-width: 860px) { .riepilogo { grid-template-columns: minmax(0, 1fr); } }
 .riepilogo .totale {
   background: var(--navy); color: #fff; border-radius: 12px; padding: 18px 20px;
@@ -176,3 +176,6 @@ a { color: inherit; }
 .barra-raccolta { height: 10px; border-radius: 999px; background: var(--off-white); border: 1px solid var(--sand); overflow: hidden; }
 .barra-raccolta span { display: block; height: 100%; background: var(--navy); }
 .dati-cliente { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+
+/* Simulatore d'investimento: scenari affiancati, uno sotto l'altro sul telefono. */
+.scenari-simulatore { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }

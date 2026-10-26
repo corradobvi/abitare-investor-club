@@ -164,9 +164,9 @@ a { color: inherit; }
 .testo-lungo { white-space: pre-wrap; line-height: 1.6; font-size: 15px; overflow-wrap: anywhere; }
 
 /* Area del cliente (/c/<token> con profilo completo) e schede delle operazioni. */
-.area-schede { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #fff; border: 1px solid var(--sand); border-radius: 12px; padding: 4px; }
+.area-schede { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; background: #fff; border: 1px solid var(--sand); border-radius: 12px; padding: 4px; }
 .area-schede button {
-  min-height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px;
+  min-height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 13px; line-height: 1.2; padding: 4px;
   font-weight: 600; color: var(--navy); cursor: pointer;
 }
 .area-schede button.attiva { background: var(--navy); color: #fff; }
@@ -179,3 +179,18 @@ a { color: inherit; }
 
 /* Simulatore d'investimento: scenari affiancati, uno sotto l'altro sul telefono. */
 .scenari-simulatore { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+
+/* Testi in Markdown (area informativa, diario delle operazioni). */
+.markdown { font-size: 16px; line-height: 1.65; overflow-wrap: anywhere; }
+.markdown > * + * { margin-top: 12px; }
+.markdown h2, .markdown h3, .markdown h4 { font-family: var(--font-serif); font-weight: 600; line-height: 1.25; margin-top: 20px; }
+.markdown h2 { font-size: 24px; }
+.markdown h3 { font-size: 20px; }
+.markdown h4 { font-size: 17px; }
+.markdown ul, .markdown ol { padding-left: 22px; display: grid; gap: 6px; }
+.markdown a { text-decoration: underline; }
+
+/* Editor dei contenuti: modulo e anteprima affiancati (uno sotto l'altro sul telefono). */
+.editor-anteprima { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 420px); gap: 20px; align-items: start; }
+.editor-anteprima .anteprima-telefono { position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow: auto; }
+@media (max-width: 960px) { .editor-anteprima { grid-template-columns: minmax(0, 1fr); } .editor-anteprima .anteprima-telefono { position: static; max-height: none; } }

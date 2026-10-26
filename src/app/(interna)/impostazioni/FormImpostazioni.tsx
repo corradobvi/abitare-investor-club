@@ -2,6 +2,7 @@
 import { useState, useTransition } from "react";
 import { componiMessaggioInvito, haSegnapostoLink } from "@/lib/messaggio-invito";
 import { componiMessaggioProposta } from "@/lib/messaggio-proposta";
+import { componiMessaggioCondivisione } from "@/lib/contenuti/testi";
 import type { OpzioneReferente } from "@/lib/referenti";
 import {
   salvaMessaggioInvito,
@@ -11,6 +12,8 @@ import {
   salvaTestoAvvertenza,
   salvaTestoLegaleQuote,
   salvaTestoSimulatore,
+  salvaTestoCaseStudy,
+  salvaMessaggioCondivisione,
   salvaUrlInformativa,
 } from "./azioni";
 
@@ -23,6 +26,8 @@ type Props = {
   urlInformativa: string;
   avvertenza: string;
   avvertenzaSimulatore: string;
+  avvertenzaCaseStudy: string;
+  messaggioCondivisione: string;
   testoLegale: string;
   messaggioProposta: string;
 };
@@ -76,6 +81,8 @@ export default function FormImpostazioni(props: Props) {
     referente: props.referenteDefault,
     avvertenza: props.avvertenza,
     avvertenzaSimulatore: props.avvertenzaSimulatore,
+    avvertenzaCaseStudy: props.avvertenzaCaseStudy,
+    messaggioCondivisione: props.messaggioCondivisione,
     testoLegale: props.testoLegale,
     messaggioProposta: props.messaggioProposta,
   });
@@ -87,6 +94,8 @@ export default function FormImpostazioni(props: Props) {
     referente: null,
     avvertenza: null,
     avvertenzaSimulatore: null,
+    avvertenzaCaseStudy: null,
+    messaggioCondivisione: null,
     testoLegale: null,
     messaggioProposta: null,
   });
@@ -194,6 +203,28 @@ export default function FormImpostazioni(props: Props) {
         </p>
         <textarea className="campo" rows={3} value={valori.avvertenzaSimulatore} onChange={(e) => cambia("avvertenzaSimulatore", e.target.value)} />
         {renderPulsante("avvertenzaSimulatore", "Salva avvertenza", salvaTestoSimulatore, "Avvertenza del simulatore salvata.")}
+      </section>
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Avvertenza dei case study</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          Testo fisso in ogni case study, sotto il riquadro &quot;Previsto e reale&quot;.
+        </p>
+        <textarea className="campo" rows={3} value={valori.avvertenzaCaseStudy} onChange={(e) => cambia("avvertenzaCaseStudy", e.target.value)} />
+        {renderPulsante("avvertenzaCaseStudy", "Salva avvertenza", salvaTestoCaseStudy, "Avvertenza dei case study salvata.")}
+      </section>
+
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Messaggio WhatsApp per condividere un contenuto</h2>
+        <p className="tenue" style={{ fontSize: 13, marginBottom: 12, lineHeight: 1.5 }}>
+          È il testo di &quot;Condividi su WhatsApp&quot; nella scheda di un contenuto. Scrivi <strong>{"{nome}"}</strong>,{" "}
+          <strong>{"{titolo}"}</strong> e <strong>{"{link}"}</strong> (porta direttamente al contenuto nell&apos;area del cliente:
+          se il cliente non ha un link personale, la frase che lo contiene si toglie da sola).
+        </p>
+        <textarea className="campo" rows={4} value={valori.messaggioCondivisione} onChange={(e) => cambia("messaggioCondivisione", e.target.value)} />
+        <div className="etichetta" style={{ marginTop: 14 }}>Anteprima</div>
+        {renderAnteprima(componiMessaggioCondivisione(valori.messaggioCondivisione, NOME_ESEMPIO, "Cos'è il flipping immobiliare", `${base}/c/esempio/approfondimenti/esempio`))}
+        {renderPulsante("messaggioCondivisione", "Salva messaggio", salvaMessaggioCondivisione, "Messaggio salvato.", !valori.messaggioCondivisione.includes("{titolo}"))}
       </section>
 
       <section className="riquadro">

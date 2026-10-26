@@ -14,6 +14,10 @@ export const PESI = {
   documento: { punti: 5, massimo: 15 }, // documento-scaricato
   simulazione: { punti: 4, massimo: 12 }, // simulazione-eseguita
   simulazioneSopraMinimo: 5, // una sola volta: importo >= investimento minimo
+  // Letture dell'area informativa e del diario (fase 4c): segnali piu' deboli
+  // di schede e simulazioni, quindi pesi bassi.
+  contenutoLetto: { punti: 2, massimo: 6 }, // contenuto-letto
+  aggiornamentoLetto: { punti: 2, massimo: 4 }, // aggiornamento-letto
   manifestazioneAttiva: 25, // stato nuova o in-contatto
   disponibilita: { subito: 6, "entro-3-mesi": 3 } as Record<string, number>,
   giorniPieni: 30, // eventi degli ultimi 30 giorni: valore pieno
@@ -78,6 +82,8 @@ const DESCRIZIONI: Record<string, string> = {
   "simulazione-eseguita": "Ha simulato un investimento",
   "interesse-manifestato": "Ha manifestato interesse",
   "interesse-ritirato": "Ha ritirato l'interesse",
+  "contenuto-letto": "Ha letto un approfondimento",
+  "aggiornamento-letto": "Ha letto un aggiornamento",
 };
 
 function importoDi(e: EventoPunteggio): number | null {
@@ -118,6 +124,8 @@ export function calcolaPunteggio(d: DatiPunteggio, ora: Date = new Date()): Punt
     somma("operazione-vista-dettaglio", PESI.dettaglio) +
     somma("documento-scaricato", PESI.documento) +
     somma("simulazione-eseguita", PESI.simulazione) +
+    somma("contenuto-letto", PESI.contenutoLetto) +
+    somma("aggiornamento-letto", PESI.aggiornamentoLetto) +
     (sopraMinimo ? PESI.simulazioneSopraMinimo * pesoTempo(sopraMinimo.creatoIl, ora) : 0) +
     (attiva ? PESI.manifestazioneAttiva : 0) +
     (PESI.disponibilita[d.disponibilitaCapitale ?? ""] ?? 0);
@@ -130,7 +138,8 @@ export function calcolaPunteggio(d: DatiPunteggio, ora: Date = new Date()): Punt
     .map((e) => ({
       tipo: e.tipo,
       descrizione: DESCRIZIONI[e.tipo],
-      operazione: e.operazioneId ? (d.titoli.get(e.operazioneId) ?? null) : null,
+      // Per le letture di un contenuto: il titolo salvato nell'evento.
+      operazione: e.operazioneId ? (d.titoli.get(e.operazioneId) ?? null) : typeof e.dati.titolo === "string" ? e.dati.titolo : null,
       importo: importoDi(e),
       quando: e.creatoIl,
     }));

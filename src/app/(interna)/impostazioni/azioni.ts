@@ -77,6 +77,27 @@ export async function salvaTestoSimulatore(testo: string): Promise<Esito> {
   return { ok: true };
 }
 
+export async function salvaTestoCaseStudy(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (!valore) return { ok: false, errore: "L'avvertenza dei case study non può essere vuota." };
+  if (valore.length > 2000) return { ok: false, errore: "Testo troppo lungo (massimo 2000 caratteri)." };
+  await salvaImpostazione("testoAvvertenzaCaseStudy", valore, utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function salvaMessaggioCondivisione(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const valore = typeof testo === "string" ? testo.trim() : "";
+  if (!valore) return { ok: false, errore: "Il messaggio non può essere vuoto." };
+  if (valore.length > 1000) return { ok: false, errore: "Il messaggio è troppo lungo (massimo 1000 caratteri)." };
+  if (!valore.includes("{titolo}")) return { ok: false, errore: "Manca il segnaposto {titolo}: il cliente non saprebbe di cosa si parla." };
+  await salvaImpostazione("messaggioCondivisioneContenutoWhatsApp", valore, utente.id);
+  revalidatePath("/impostazioni");
+  return { ok: true };
+}
+
 // Puo' essere vuoto: in quel caso le operazioni in quote non si pubblicano.
 export async function salvaTestoLegaleQuote(testo: string): Promise<Esito> {
   const utente = await utenteImpostazioni();

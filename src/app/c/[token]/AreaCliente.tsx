@@ -1,18 +1,31 @@
 "use client";
-// "La tua area" del cliente con profilo completo: due schede, comode da
+// "La tua area" del cliente con profilo completo: tre schede, comode da
 // telefono. "Le operazioni per te" (compatibili, per punteggio) con i propri
-// interessi; "Il mio profilo" con il riepilogo e la modifica delle risposte
-// (riapre la procedura guidata sulla domanda scelta).
+// interessi; "Approfondimenti" (consigliati per il profilo, poi formazione,
+// case study e news); "Il mio profilo" con il riepilogo e la modifica delle
+// risposte (riapre la procedura guidata sulla domanda scelta).
 import Link from "next/link";
 import { useState } from "react";
 import type { VoceCliente } from "@/lib/operazioni/interessi";
+import type { VoceApprofondimento } from "@/lib/contenuti/portale";
 import { importoMostrato, statoInteresseMostrato } from "@/lib/operazioni/definizioni";
 import { percentuale } from "@/lib/numeri";
+import { data } from "@/lib/date";
 import { renderFasciaAnteprima, renderMarchio } from "@/app/portale-ui";
 
 export type RispostaRiepilogo = { chiave: string; domanda: string; risposta: string };
 
 export type ReferenteCliente = { nome: string | null; whatsapp: string | null; email: string | null };
+
+export type Approfondimenti = {
+  consigliati: VoceApprofondimento[];
+  formazione: VoceApprofondimento[];
+  caseStudy: VoceApprofondimento[];
+  news: VoceApprofondimento[];
+};
+
+// Novita' dopo l'ultima visita: aggiornamenti delle operazioni e contenuti consigliati.
+export type NovitaPerTe = { aggiornamenti: number; contenuti: number };
 
 type Props = {
   token: string;
@@ -21,12 +34,23 @@ type Props = {
   perTe: VoceCliente[];
   interessi: VoceCliente[];
   profilo: RispostaRiepilogo[];
+  approfondimenti: Approfondimenti;
+  novita: NovitaPerTe;
+  vistaIniziale: Vista;
   fascia: string | null;
 };
 
-type Vista = "operazioni" | "profilo";
+export type Vista = "operazioni" | "approfondimenti" | "profilo";
 
 // Etichette per il cliente: la manifestazione "nuova" per lui e' "inviata".
+const SCHEDE: { valore: Vista; etichetta: string }[] = [
+  { valore: "operazioni", etichetta: "Operazioni per te" },
+  { valore: "approfondimenti", etichetta: "Approfondimenti" },
+  { valore: "profilo", etichetta: "Il mio profilo" },
+];
+
+const ETICHETTA_TIPO: Record<string, string> = { formazione: "Formazione", "case-study": "Case study", news: "News" };
+
 const STATO_PER_CLIENTE: Record<string, string> = {
   nuova: "Interesse inviato",
   "in-contatto": "Il tuo referente ti sta seguendo",
@@ -35,8 +59,8 @@ const STATO_PER_CLIENTE: Record<string, string> = {
   ritirata: "Interesse ritirato",
 };
 
-export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, fascia }: Props) {
-  const [vista, setVista] = useState<Vista>("operazioni");
+export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, approfondimenti, novita, vistaIniziale, fascia }: Props) {
+  const [vista, setVista] = useState<Vista>(vistaIniziale);
   const base = `/c/${token}`;
 
   function renderReferente() {
@@ -145,6 +169,71 @@ export default function AreaCliente({ token, nome, referente, perTe, interessi, 
     );
   }
 
+  function renderApprofondimento(c: VoceApprofondimento) {
+    return (
+      <Link key={c.id} href={`${base}/approfondimenti/${c.slug}`} className="scheda-operazione" style={{ display: "grid", gridTemplateColumns: c.copertina ? "96px minmax(0, 1fr)" : "minmax(0, 1fr)" }}>
+        {c.copertina ? (
+          <div className="copertina" style={{ aspectRatio: "auto", height: "100%", minHeight: 96 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={`${base}/contenuti/${c.id}/copertina`} alt="" loading="lazy" />
+          </div>
+        ) : null}
+        <div style={{ padding: 12, display: "grid", gap: 4, textAlign: "left" }}>
+          <div className="tenue" style={{ fontSize: 11, letterSpacing: 1, textTransform: "uppercase" }}>
+            {ETICHETTA_TIPO[c.tipo] ?? c.tipo}
+            {c.livello ? ` · ${c.livello}` : ""}
+            {c.data ? ` · ${data(c.data)}` : ""}
+          </div>
+          <strong style={{ fontSize: 16, lineHeight: 1.3 }}>{c.titolo}</strong>
+          {c.sommario ? <span className="tenue" style={{ fontSize: 13 }}>{c.sommario}</span> : null}
+        </div>
+      </Link>
+    );
+  }
+
+  function renderElencoApprofondimenti(titolo: string, voci: VoceApprofondimento[], vuoto?: string) {
+    if (!voci.length && !vuoto) return null;
+    return (
+      <div key={titolo} style={{ display: "grid", gap: 10 }}>
+        <h2 className="titolo" style={{ fontSize: 22, textAlign: "left" }}>{titolo}</h2>
+        {voci.length ? voci.map(renderApprofondimento) : <p className="tenue" style={{ fontSize: 14, textAlign: "left" }}>{vuoto}</p>}
+      </div>
+    );
+  }
+
+  function renderApprofondimenti() {
+    const a = approfondimenti;
+    const nessuno = !a.formazione.length && !a.caseStudy.length && !a.news.length;
+    if (nessuno) {
+      return (
+        <div className="riquadro" style={{ textAlign: "left" }}>
+          <p className="testo-portale">Qui troverai guide, casi reali e notizie per investire con più consapevolezza. Stiamo preparando i primi contenuti.</p>
+        </div>
+      );
+    }
+    return (
+      <div style={{ display: "grid", gap: 22 }}>
+        {renderElencoApprofondimenti("Consigliati per te", a.consigliati)}
+        {renderElencoApprofondimenti("Formazione", a.formazione)}
+        {renderElencoApprofondimenti("Case study", a.caseStudy)}
+        {renderElencoApprofondimenti("News", a.news)}
+      </div>
+    );
+  }
+
+  function renderNovita() {
+    const parti = [
+      novita.aggiornamenti ? `${novita.aggiornamenti} ${novita.aggiornamenti === 1 ? "aggiornamento" : "aggiornamenti"} sulle tue operazioni` : "",
+      novita.contenuti ? `${novita.contenuti} ${novita.contenuti === 1 ? "nuovo approfondimento consigliato" : "nuovi approfondimenti consigliati"}` : "",
+    ].filter(Boolean);
+    if (!parti.length) return null;
+    return (
+      <div className="avvertenza" style={{ whiteSpace: "normal", textAlign: "left", fontSize: 14 }}>
+        <strong>Novità per te:</strong> {parti.join(" e ")} dalla tua ultima visita.
+      </div>
+    );
+  }
+
   function renderProfilo() {
     return (
       <div className="riquadro" style={{ textAlign: "left" }}>
@@ -176,15 +265,15 @@ export default function AreaCliente({ token, nome, referente, perTe, interessi, 
           {nome ? `Ciao ${nome}, questa è la tua area` : "La tua area"}
         </h1>
         {renderReferente()}
+        {renderNovita()}
         <nav className="area-schede" role="tablist">
-          <button type="button" role="tab" aria-selected={vista === "operazioni"} className={vista === "operazioni" ? "attiva" : ""} onClick={() => setVista("operazioni")}>
-            Le operazioni per te
-          </button>
-          <button type="button" role="tab" aria-selected={vista === "profilo"} className={vista === "profilo" ? "attiva" : ""} onClick={() => setVista("profilo")}>
-            Il mio profilo
-          </button>
+          {SCHEDE.map((s) => (
+            <button key={s.valore} type="button" role="tab" aria-selected={vista === s.valore} className={vista === s.valore ? "attiva" : ""} onClick={() => setVista(s.valore)}>
+              {s.etichetta}
+            </button>
+          ))}
         </nav>
-        {vista === "operazioni" ? renderOperazioni() : renderProfilo()}
+        {vista === "operazioni" ? renderOperazioni() : vista === "approfondimenti" ? renderApprofondimenti() : renderProfilo()}
       </div>
     </main>
   );

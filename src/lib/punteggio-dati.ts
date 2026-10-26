@@ -28,6 +28,8 @@ const TIPI_EVENTO = [
   "simulazione-eseguita",
   "interesse-manifestato",
   "interesse-ritirato",
+  "contenuto-letto",
+  "aggiornamento-letto",
 ];
 
 // Punteggi calcolati ora (non salvati) per piu' investitori.

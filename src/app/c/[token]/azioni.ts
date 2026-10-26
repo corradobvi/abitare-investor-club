@@ -23,6 +23,9 @@ import type { Rif } from "@/lib/riferimento";
 import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
 import { importoNeiLimiti, limitiSimulatore } from "@/lib/simulatore";
 import { massimoCapitale } from "@/lib/compatibilita";
+import { prisma } from "@/lib/prisma";
+import { registraLetturaContenuto } from "@/lib/contenuti/dati";
+import { aggiornamentoVisibileAlCliente, registraLetturaAggiornamento } from "@/lib/operazioni/aggiornamenti";
 
 type Esito = { ok: true; completo: boolean } | { ok: false; errore: string };
 
@@ -125,4 +128,27 @@ export async function segnalaSimulazione(token: unknown, operazioneId: unknown, 
   const limiti = limitiSimulatore({ formula: v.op.quota ? "quota" : "intera", minimoEuro: v.op.investimentoMinimoEuro }, massimoCapitale(ctx.risposte));
   if (!limiti) return;
   await registraSimulazione(ctx.investitore.rif, operazioneId, importoNeiLimiti(Math.round(importo), limiti));
+}
+
+// Lettura di un contenuto pubblicato (dopo 20 secondi o a meta' pagina):
+// al massimo una volta al giorno per contenuto.
+export async function segnalaLetturaContenuto(token: unknown, contenutoId: unknown): Promise<void> {
+  if (typeof contenutoId !== "string") return;
+  const ctx = await contestoDaTracciare(token);
+  if (!ctx || !completezzaProfilo(ctx.risposte).completo) return;
+  const c = await prisma.clubContenuto.findUnique({ where: { id: contenutoId } });
+  if (!c || c.stato !== "pubblicato") return;
+  await registraLetturaContenuto(ctx.investitore.rif, c);
+}
+
+// Lettura di un aggiornamento del diario che il cliente puo' vedere.
+export async function segnalaLetturaAggiornamento(token: unknown, aggiornamentoId: unknown): Promise<void> {
+  if (typeof aggiornamentoId !== "string") return;
+  const ctx = await contestoDaTracciare(token);
+  if (!ctx) return;
+  const a = await prisma.clubAggiornamentoOperazione.findUnique({ where: { id: aggiornamentoId } });
+  if (!a) return;
+  const v = await operazioneDelCliente(ctx.investitore.rif, ctx.risposte, a.operazioneId);
+  if (!v || !aggiornamentoVisibileAlCliente(a, v.op.livello)) return;
+  await registraLetturaAggiornamento(ctx.investitore.rif, a);
 }

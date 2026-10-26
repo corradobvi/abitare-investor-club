@@ -27,6 +27,7 @@ import {
 import PingApertura from "./PingApertura";
 import ProceduraGuidata from "./ProceduraGuidata";
 import AreaCliente, { type ReferenteCliente } from "./AreaCliente";
+import { approfondimentiPerCliente, novitaPerCliente } from "@/lib/contenuti/portale";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,9 @@ export default async function LinkClientePage({
   searchParams,
 }: {
   params: Promise<{ token: string }>;
-  searchParams: Promise<{ modifica?: string }>;
+  searchParams: Promise<{ modifica?: string; vista?: string }>;
 }) {
-  const [{ token }, { modifica }] = await Promise.all([params, searchParams]);
+  const [{ token }, { modifica, vista }] = await Promise.all([params, searchParams]);
   const ctx = await contestoLink(token);
   if (!ctx) return renderPaginaMessaggio(TESTO_LINK_NON_VALIDO.titolo, TESTO_LINK_NON_VALIDO.testo);
   const { investitore, impostazioni: imp, modalita, risposte } = ctx;
@@ -72,10 +73,13 @@ export default async function LinkClientePage({
     );
   }
 
-  const [{ perTe, interessi }, utenti] = await Promise.all([
+  const [{ perTe, interessi }, utenti, approfondimenti] = await Promise.all([
     operazioniDelCliente(investitore.rif, risposte),
     utentiPerId(investitore.referenteUserId ? [investitore.referenteUserId] : []),
+    approfondimentiPerCliente(risposte),
   ]);
+  // Ultima visita: l'apertura di questa pagina si registra dopo, dal browser.
+  const novita = await novitaPerCliente(ctx.link.ultimoAccessoIl, [...perTe, ...interessi], approfondimenti.consigliati);
   const numero = numeroWhatsapp(cellulareReferente(imp, investitore.referenteUserId));
   const saluto = `Ciao${investitore.referente ? ` ${investitore.referente.split(" ")[0]}` : ""}, sono ${investitore.nome || "un cliente"}: ti scrivo dall'AbitaRE Investor Club.`;
   const referente: ReferenteCliente = {
@@ -97,6 +101,14 @@ export default async function LinkClientePage({
         perTe={perTe}
         interessi={interessi}
         profilo={profilo}
+        approfondimenti={{
+          consigliati: approfondimenti.consigliati,
+          formazione: approfondimenti.formazione,
+          caseStudy: approfondimenti.caseStudy,
+          news: approfondimenti.news,
+        }}
+        novita={novita}
+        vistaIniziale={vista === "approfondimenti" || vista === "profilo" ? vista : "operazioni"}
         fascia={modalita === "anteprima" ? "Anteprima: niente viene salvato" : modalita === "prova" ? TESTO_FASCIA_PROVA : null}
       />
     </>

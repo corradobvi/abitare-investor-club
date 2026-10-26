@@ -12,7 +12,9 @@ import { costoTotale, importoMostrato, statoInteresseMostrato } from "@/lib/oper
 import { euro, intero, leggiImporto, percentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
 import { renderFasciaAnteprima, renderMarchio } from "@/app/portale-ui";
-import { inviaManifestazione, ritiraManifestazione, segnalaSimulazione, segnalaVista } from "../../azioni";
+import { inviaManifestazione, ritiraManifestazione, segnalaLetturaAggiornamento, segnalaSimulazione, segnalaVista } from "../../azioni";
+import type { AggiornamentoMostrato } from "@/lib/operazioni/aggiornamenti";
+import { renderAggiornamento } from "@/app/aggiornamento-ui";
 import RiquadroSimulatore from "@/app/RiquadroSimulatore";
 
 type Props = {
@@ -21,6 +23,7 @@ type Props = {
   avvertenza: string;
   avvertenzaSimulatore: string;
   massimoCliente: number | null; // massimo della fascia di capitale del cliente
+  aggiornamenti: AggiornamentoMostrato[]; // gia' filtrati per il livello della scheda
   testoLegale: string | null; // solo per le quote
   referente: string | null;
   contattoIniziale: string;
@@ -43,6 +46,7 @@ export default function SchedaCliente({
   avvertenza,
   avvertenzaSimulatore,
   massimoCliente,
+  aggiornamenti,
   testoLegale,
   referente,
   contattoIniziale,
@@ -64,6 +68,37 @@ export default function SchedaCliente({
   const [grazie, setGrazie] = useState(false);
   const [inCorso, avvia] = useTransition();
   const segnalata = useRef("");
+  const diario = useRef<HTMLUListElement>(null);
+
+  // Lettura di un aggiornamento: visibile almeno a meta' per 3 secondi.
+  useEffect(() => {
+    const ul = diario.current;
+    if (!salva || !ul || typeof IntersectionObserver === "undefined") return;
+    const timer = new Map<Element, ReturnType<typeof setTimeout>>();
+    const letti = new Set<string>();
+    const osserva = new IntersectionObserver(
+      (voci) => {
+        for (const v of voci) {
+          const id = (v.target as HTMLElement).dataset.aggiornamento;
+          if (!id || letti.has(id)) continue;
+          if (v.isIntersecting) {
+            timer.set(v.target, setTimeout(() => {
+              letti.add(id);
+              segnalaLetturaAggiornamento(token, id).catch(() => {});
+            }, 3000));
+          } else {
+            clearTimeout(timer.get(v.target));
+          }
+        }
+      },
+      { threshold: 0.5 },
+    );
+    ul.querySelectorAll("[data-aggiornamento]").forEach((el) => osserva.observe(el));
+    return () => {
+      osserva.disconnect();
+      timer.forEach((t) => clearTimeout(t));
+    };
+  }, [salva, token, aggiornamenti]);
 
   // Una segnalazione per livello di scheda mostrato (il server evita i doppioni).
   useEffect(() => {
@@ -441,6 +476,12 @@ export default function SchedaCliente({
         {renderTesto("Punti di forza", op.puntiDiForza)}
         {renderEstero()}
         {completa ? renderDettagli() : null}
+        {aggiornamenti.length ? (
+          <section className="riquadro">
+            <h2 className="titolo" style={{ fontSize: 20 }}>Aggiornamenti</h2>
+            <ul ref={diario}>{aggiornamenti.map((a) => renderAggiornamento(a, (n) => `${base}/aggiornamenti/${a.id}/foto/${n}`))}</ul>
+          </section>
+        ) : null}
         {renderSimulatore()}
         {renderInteresse()}
         {renderAvvertenze()}

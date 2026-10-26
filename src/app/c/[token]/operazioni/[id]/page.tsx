@@ -14,6 +14,7 @@ import { NOINDEX, renderPaginaMessaggio, TESTO_FASCIA_PROVA, TESTO_IN_PREPARAZIO
 import SchedaCliente from "./SchedaCliente";
 import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 import { massimoCapitale } from "@/lib/compatibilita";
+import { aggiornamentiPerCliente } from "@/lib/operazioni/aggiornamenti";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,7 @@ export default async function OperazioneClientePage({ params }: { params: Promis
       avvertenza={imp.testoAvvertenzaOperazioni || TESTO_AVVERTENZA_PREDEFINITO}
       avvertenzaSimulatore={imp.testoAvvertenzaSimulatore || AVVERTENZA_SIMULATORE_PREDEFINITA}
       massimoCliente={massimoCapitale(risposte)}
+      aggiornamenti={await aggiornamentiPerCliente(voce.op.id, voce.op.livello)}
       testoLegale={voce.op.quota ? (imp.testoLegaleQuote ?? "") : null}
       referente={investitore.referente}
       contattoIniziale={contatto}

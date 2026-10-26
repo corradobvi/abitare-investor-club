@@ -1,6 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { puoAggiornareRaccolta, puoModificareOperazione, utenteConAccesso } from "@/lib/permessi";
+import {
+  puoAggiornareRaccolta,
+  puoEliminareAggiornamento,
+  puoModificareOperazione,
+  puoPubblicareAggiornamento,
+  puoScrivereContenuti,
+  utenteConAccesso,
+} from "@/lib/permessi";
+import { aggiornamentiOperazione } from "@/lib/operazioni/aggiornamenti";
+import { renderAggiornamento } from "@/app/aggiornamento-ui";
+import NuovoAggiornamento, { PulsanteEliminaAggiornamento } from "./NuovoAggiornamento";
+import CreaCaseStudy from "./CreaCaseStudy";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { utentiPerId } from "@/lib/crm/lettura";
 import { azioniPermesse, copertina, eventiOperazione, operazionePerUtente, type FileMostrato } from "@/lib/operazioni/dati";
@@ -56,6 +67,9 @@ const EVENTI: Record<string, string> = {
   "operazione-vista-anteprima": "Scheda sintetica vista da un cliente",
   "operazione-vista-dettaglio": "Scheda completa vista da un cliente",
   "documento-scaricato": "Documento aperto da un cliente",
+  "aggiornamento-pubblicato": "Aggiornamento del diario pubblicato",
+  "aggiornamento-letto": "Aggiornamento letto da un cliente",
+  "simulazione-eseguita": "Simulazione di un cliente",
 };
 
 const CONTATTO: Record<string, string> = { whatsapp: "WhatsApp", telefono: "telefono", email: "email" };
@@ -251,6 +265,7 @@ export default async function SchedaOperazionePage({
             azioni={azioniPermesse(utente, op)}
             motiviBlocco={motiviBloccoPubblicazione(op, imp.testoLegaleQuote)}
           />
+          {op.stato === "conclusa" && puoScrivereContenuti(utente.ruolo) ? <CreaCaseStudy operazioneId={op.id} /> : null}
         </div>
       </section>
     );
@@ -462,6 +477,39 @@ export default async function SchedaOperazionePage({
     );
   }
 
+  // Diario dell'operazione: aggiornamenti per i clienti (piu' recenti prima).
+  async function renderDiario() {
+    const aggiornamenti = await aggiornamentiOperazione(op.id);
+    const elimina = puoEliminareAggiornamento(utente.ruolo);
+    return (
+      <section className="riquadro" style={{ display: "grid", gap: 10 }}>
+        <h2 className="titolo" style={{ fontSize: 22 }}>Diario dell'operazione ({aggiornamenti.length})</h2>
+        <p className="tenue" style={{ fontSize: 12 }}>
+          Gli aggiornamenti si vedono nella scheda completa del cliente; quelli per &quot;tutti i compatibili&quot; anche nella scheda sintetica.
+        </p>
+        {puoPubblicareAggiornamento(utente, op) ? <NuovoAggiornamento operazioneId={op.id} /> : null}
+        {aggiornamenti.length ? (
+          <ul>
+            {aggiornamenti.map((a) =>
+              renderAggiornamento(
+                a,
+                (n) => `/operazioni/aggiornamenti/${a.id}/foto/${n}`,
+                <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <span className={a.visibilita === "tutti-compatibili" ? "badge ok" : "badge"}>
+                    {a.visibilita === "tutti-compatibili" ? "tutti i compatibili" : "solo interessati"}
+                  </span>
+                  {elimina ? <PulsanteEliminaAggiornamento operazioneId={op.id} id={a.id} /> : null}
+                </div>,
+              ),
+            )}
+          </ul>
+        ) : (
+          <p className="tenue" style={{ fontSize: 14 }}>Nessun aggiornamento.</p>
+        )}
+      </section>
+    );
+  }
+
   async function renderCronologia() {
     const eventi = await eventiOperazione(op.id);
     const utenti = await utentiPerId(eventi.map((e) => e.userId ?? ""));
@@ -557,6 +605,8 @@ export default async function SchedaOperazionePage({
             <h2 className="titolo" style={{ fontSize: 22, marginBottom: 6 }}>Documenti ({documenti.length})</h2>
             {documenti.length ? <ul style={{ listStyle: "none" }}>{documenti.map(renderDocumento)}</ul> : <p className="tenue" style={{ fontSize: 14 }}>Nessun documento.</p>}
           </section>
+
+          {await renderDiario()}
 
           {await renderCompatibili()}
         </div>

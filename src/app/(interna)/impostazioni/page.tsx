@@ -5,6 +5,7 @@ import { opzioniReferente } from "@/lib/referenti";
 import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import FormImpostazioni from "./FormImpostazioni";
 import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
+import { AVVERTENZA_CASE_STUDY_PREDEFINITA, MESSAGGIO_CONDIVISIONE_PREDEFINITO } from "@/lib/contenuti/testi";
 import CellulariReferenti from "./CellulariReferenti";
 
 export const dynamic = "force-dynamic";
@@ -45,6 +46,8 @@ export default async function ImpostazioniPage() {
         urlInformativa={imp.urlInformativaPrivacy || URL_INFORMATIVA_PRIVACY_PREDEFINITO}
         avvertenza={imp.testoAvvertenzaOperazioni || TESTO_AVVERTENZA_PREDEFINITO}
         avvertenzaSimulatore={imp.testoAvvertenzaSimulatore || AVVERTENZA_SIMULATORE_PREDEFINITA}
+        avvertenzaCaseStudy={imp.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA}
+        messaggioCondivisione={imp.messaggioCondivisioneContenutoWhatsApp || MESSAGGIO_CONDIVISIONE_PREDEFINITO}
         testoLegale={imp.testoLegaleQuote ?? ""}
         messaggioProposta={imp.messaggioPropostaOperazioneWhatsApp || MESSAGGIO_PROPOSTA_PREDEFINITO}
       />

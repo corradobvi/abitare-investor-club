@@ -147,3 +147,41 @@ export function puoVedereOperazione(utente: Pick<UtenteClub, "visibilita">, op: 
 export function statiOperazioniVisibili(utente: Pick<UtenteClub, "visibilita">): string[] | null {
   return utente.visibilita === "tutti" ? null : ["pubblicata"];
 }
+
+// --- Area informativa (contenuti) e diario delle operazioni ---
+//
+// - Contenuti: creare e modificare le bozze -> Admin, BackOffice,
+//   ConsulenteSenior. Pubblicare, archiviare e modificare i pubblicati:
+//   formazione e news -> Admin e BackOffice; case study -> solo Admin.
+//   Consulente: solo lettura dei pubblicati e condivisione.
+// - Aggiornamenti delle operazioni: pubblicare -> Admin e BackOffice;
+//   ConsulenteSenior se referente o creatore dell'operazione. Eliminare -> solo Admin.
+type ContenutoPerPermessi = { tipo: string; stato: string };
+
+export function puoScrivereContenuti(ruolo: string): boolean {
+  return ruolo === "Admin" || ruolo === "BackOffice" || ruolo === "ConsulenteSenior";
+}
+
+export function puoPubblicareContenuto(ruolo: string, tipo: string): boolean {
+  return tipo === "case-study" ? ruolo === "Admin" : ruolo === "Admin" || ruolo === "BackOffice";
+}
+
+export function puoModificareContenuto(utente: Pick<UtenteClub, "ruolo">, c: ContenutoPerPermessi): boolean {
+  return c.stato === "bozza" ? puoScrivereContenuti(utente.ruolo) : puoPubblicareContenuto(utente.ruolo, c.tipo);
+}
+
+export function puoVedereContenuto(utente: Pick<UtenteClub, "visibilita">, c: Pick<ContenutoPerPermessi, "stato">): boolean {
+  return utente.visibilita === "tutti" || c.stato === "pubblicato";
+}
+
+export function puoPubblicareAggiornamento(
+  utente: Pick<UtenteClub, "id" | "ruolo">,
+  op: { referenteUserId: string | null; creatoDaUserId: string },
+): boolean {
+  if (utente.ruolo === "Admin" || utente.ruolo === "BackOffice") return true;
+  return utente.ruolo === "ConsulenteSenior" && (op.referenteUserId === utente.id || op.creatoDaUserId === utente.id);
+}
+
+export function puoEliminareAggiornamento(ruolo: string): boolean {
+  return ruolo === "Admin";
+}

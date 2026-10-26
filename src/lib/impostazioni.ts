@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
+import { AVVERTENZA_CASE_STUDY_PREDEFINITA, MESSAGGIO_CONDIVISIONE_PREDEFINITO } from "@/lib/contenuti/testi";
 
 // Impostazioni del Club (tabella ClubImpostazione, chiave/valore). Le chiavi
 // sono in italiano camelCase; i valori iniziali li scrive
@@ -36,6 +37,10 @@ export const CHIAVI_IMPOSTAZIONI = [
   "cellulariReferenti",
   // Avvertenza fissa sotto i risultati del simulatore d'investimento.
   "testoAvvertenzaSimulatore",
+  // Avvertenza fissa nei case study dell'area informativa.
+  "testoAvvertenzaCaseStudy",
+  // Messaggio WhatsApp per condividere un contenuto: {nome}, {titolo}, {link}.
+  "messaggioCondivisioneContenutoWhatsApp",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];
@@ -76,6 +81,8 @@ const PREDEFINITI: Partial<Impostazioni> = {
   testoAvvertenzaOperazioni: TESTO_AVVERTENZA_PREDEFINITO,
   messaggioPropostaOperazioneWhatsApp: MESSAGGIO_PROPOSTA_PREDEFINITO,
   testoAvvertenzaSimulatore: AVVERTENZA_SIMULATORE_PREDEFINITA,
+  testoAvvertenzaCaseStudy: AVVERTENZA_CASE_STUDY_PREDEFINITA,
+  messaggioCondivisioneContenutoWhatsApp: MESSAGGIO_CONDIVISIONE_PREDEFINITO,
 };
 
 export async function leggiImpostazioni(): Promise<Impostazioni> {
@@ -99,6 +106,8 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "messaggioPropostaOperazioneWhatsApp",
   "cellulariReferenti",
   "testoAvvertenzaSimulatore",
+  "testoAvvertenzaCaseStudy",
+  "messaggioCondivisioneContenutoWhatsApp",
 ] as const;
 
 export type ImpostazioneModificabile = (typeof IMPOSTAZIONI_MODIFICABILI)[number];

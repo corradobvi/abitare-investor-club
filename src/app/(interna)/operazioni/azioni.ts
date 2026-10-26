@@ -20,6 +20,7 @@ import {
 } from "@/lib/operazioni/dati";
 import { AZIONI_FLUSSO, type AzioneFlusso } from "@/lib/operazioni/definizioni";
 import { disiscritti } from "@/lib/disiscrizioni";
+import { aggiungiFotoAggiornamento, creaAggiornamento, eliminaAggiornamento, type InputAggiornamento } from "@/lib/operazioni/aggiornamenti";
 
 type Esito = { ok: true } | { ok: false; errore: string; motivi?: string[] };
 
@@ -114,4 +115,28 @@ export async function cercaCambio(valuta: string): Promise<{ ok: true; cambio: n
     }
     throw e;
   }
+}
+
+// --- Diario dell'operazione ---
+
+export async function nuovoAggiornamento(operazioneId: string, input: InputAggiornamento): Promise<{ ok: true; id: string } | { ok: false; errore: string }> {
+  const esito = await creaAggiornamento(await utenteConAccesso(), operazioneId, input);
+  if (esito.ok) aggiorna(operazioneId);
+  return esito;
+}
+
+export async function caricaFotoAggiornamento(dati: FormData): Promise<Esito> {
+  const utente = await utenteConAccesso();
+  const id = String(dati.get("aggiornamentoId") ?? "");
+  const file = dati.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, errore: "Scegli una foto." };
+  const esito = await aggiungiFotoAggiornamento(utente, id, new Uint8Array(await file.arrayBuffer()));
+  if (esito.ok) aggiorna(String(dati.get("operazioneId") ?? ""));
+  return esito;
+}
+
+export async function eliminaAggiornamentoOperazione(operazioneId: string, id: string): Promise<Esito> {
+  const esito = await eliminaAggiornamento(await utenteConAccesso(), id);
+  if (esito.ok) aggiorna(operazioneId);
+  return esito;
 }

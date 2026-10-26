@@ -71,6 +71,13 @@ async function main() {
       testoAvvertenzaSimulatore:
         "Simulazione indicativa basata su stime: valori al lordo di imposte e costi personali, non garantiti. " +
         "Il finanziamento bancario non è incluso: parlane con il tuo consulente.",
+      // Avvertenza fissa nei case study.
+      // Uguale a AVVERTENZA_CASE_STUDY_PREDEFINITA in src/lib/contenuti/testi.ts.
+      testoAvvertenzaCaseStudy: "I risultati di operazioni passate non sono indicativi né garanzia di risultati futuri.",
+      // Messaggio WhatsApp per condividere un contenuto: {nome}, {titolo}, {link}.
+      // Uguale a MESSAGGIO_CONDIVISIONE_PREDEFINITO in src/lib/contenuti/testi.ts.
+      messaggioCondivisioneContenutoWhatsApp:
+        "Ciao {nome}, ho pensato potesse interessarti questo approfondimento: {titolo}. Lo trovi nella tua area riservata: {link}",
       // Testo del legale per le operazioni in quote: lo compila l'Admin.
       // Finche' e' vuoto le operazioni in quote non si possono pubblicare.
       testoLegaleQuote: "",

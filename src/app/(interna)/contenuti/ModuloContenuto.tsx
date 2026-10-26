@@ -6,16 +6,32 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { ARGOMENTI, LIVELLI, MASSIMO_SOMMARIO, TIPI_CONTENUTO, type ContenutoMostrato } from "@/lib/contenuti/definizioni";
+import {
+  ARGOMENTI,
+  LIVELLI,
+  MASSIMO_ALLEGATI_CONTENUTO,
+  MASSIMO_SOMMARIO,
+  TIPI_CONTENUTO,
+  type AllegatoMostrato,
+  type ContenutoMostrato,
+} from "@/lib/contenuti/definizioni";
 import type { ErroriContenuto, InputContenuto } from "@/lib/contenuti/dati";
 import { leggiPercentuale } from "@/lib/numeri";
 import { renderContenuto } from "@/app/contenuto-ui";
-import { caricaCopertinaContenuto, rimuoviCopertinaContenuto, salvaContenuto, salvaNuovoContenuto } from "./azioni";
+import {
+  caricaAllegatoContenuto,
+  caricaCopertinaContenuto,
+  rimuoviAllegatoContenuto,
+  rimuoviCopertinaContenuto,
+  salvaContenuto,
+  salvaNuovoContenuto,
+} from "./azioni";
 
 type Props = {
   id: string | null; // null = nuovo contenuto
   iniziali: InputContenuto;
   haCopertina: boolean;
+  allegati: AllegatoMostrato[]; // documenti PDF gia' caricati
   avvertenzaCaseStudy: string;
   operazioni: { valore: string; etichetta: string }[]; // per collegare un case study
 };
@@ -32,7 +48,7 @@ function percento(t: string): number | null {
   return v === null || Number.isNaN(v) ? null : v;
 }
 
-export default function ModuloContenuto({ id, iniziali, haCopertina, avvertenzaCaseStudy, operazioni }: Props) {
+export default function ModuloContenuto({ id, iniziali, haCopertina, allegati, avvertenzaCaseStudy, operazioni }: Props) {
   const router = useRouter();
   const [valori, setValori] = useState<InputContenuto>(iniziali);
   const [salvati, setSalvati] = useState<InputContenuto>(iniziali);
@@ -63,6 +79,7 @@ export default function ModuloContenuto({ id, iniziali, haCopertina, avvertenzaC
       durataRealeMesi: numero(valori.durataRealeMesi),
       notaRisultati: valori.notaRisultati || null,
       data: null,
+      allegati,
     }),
     [id, valori, copertina],
   );
@@ -118,6 +135,32 @@ export default function ModuloContenuto({ id, iniziali, haCopertina, avvertenzaC
       setCopertina(true);
       setVersioneCopertina((v) => v + 1);
       setMessaggio({ tipo: "ok", testo: "Copertina caricata." });
+    });
+  }
+
+  // Documenti PDF: uno alla volta, dopo il primo salvataggio.
+  function caricaDocumenti(file: File[]) {
+    if (!id || !file.length) return;
+    setMessaggio(null);
+    avvia(async () => {
+      const errori: string[] = [];
+      for (const f of file) {
+        const dati = new FormData();
+        dati.set("id", id);
+        dati.set("file", f);
+        const esito = await caricaAllegatoContenuto(dati).catch(() => null);
+        if (!esito?.ok) errori.push(`${f.name}: ${esito && !esito.ok ? esito.errore : "non caricato"}`);
+      }
+      setMessaggio(errori.length ? { tipo: "errore", testo: errori.join(" ") } : { tipo: "ok", testo: "Documenti caricati." });
+      router.refresh();
+    });
+  }
+
+  function togliDocumento(allegatoId: string) {
+    if (!id || !window.confirm("Togliere questo documento?")) return;
+    avvia(async () => {
+      await rimuoviAllegatoContenuto(id, allegatoId).catch(() => null);
+      router.refresh();
     });
   }
 
@@ -255,6 +298,33 @@ export default function ModuloContenuto({ id, iniziali, haCopertina, avvertenzaC
           )}
         </section>
 
+        <section className="riquadro" style={{ display: "grid", gap: 8 }}>
+          <span className="etichetta">Documenti PDF (fino a {MASSIMO_ALLEGATI_CONTENUTO}, 20 MB ciascuno)</span>
+          {id ? (
+            <>
+              {allegati.length ? (
+                <ul style={{ listStyle: "none" }}>
+                  {allegati.map((a) => (
+                    <li key={a.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "6px 0", borderTop: "1px solid var(--off-white)", fontSize: 14 }}>
+                      <a href={`/allegati/${a.id}`} target="_blank" rel="noopener noreferrer" style={{ overflowWrap: "anywhere" }}>
+                        {a.nome}
+                      </a>
+                      <button type="button" className="collegamento" style={{ padding: 0, fontSize: 13 }} onClick={() => togliDocumento(a.id)} disabled={inCorso}>
+                        Togli
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              {allegati.length < MASSIMO_ALLEGATI_CONTENUTO ? (
+                <input type="file" multiple accept="application/pdf" disabled={inCorso} onChange={(e) => caricaDocumenti(Array.from(e.target.files ?? []))} />
+              ) : null}
+            </>
+          ) : (
+            <p className="tenue" style={{ fontSize: 13 }}>I documenti si caricano dopo il primo salvataggio.</p>
+          )}
+        </section>
+
         <div className="riquadro" style={{ position: "sticky", bottom: 0, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", zIndex: 5 }}>
           <button type="button" className="pulsante" onClick={salva} disabled={inCorso || (!!id && !modificato)}>
             {inCorso ? "Salvataggio…" : id ? "Salva modifiche" : "Crea la bozza"}
@@ -275,7 +345,7 @@ export default function ModuloContenuto({ id, iniziali, haCopertina, avvertenzaC
       <aside className="anteprima-telefono" aria-label="Anteprima per il cliente">
         <div className="etichetta" style={{ textAlign: "center", marginBottom: 8 }}>Anteprima: così la vedrà il cliente</div>
         <div className="riquadro" style={{ background: "var(--off-white)" }}>
-          {renderContenuto(anteprima, copertina && id ? `/contenuti/${id}/copertina?v=${versioneCopertina}` : null, avvertenzaCaseStudy)}
+          {renderContenuto(anteprima, copertina && id ? `/contenuti/${id}/copertina?v=${versioneCopertina}` : null, avvertenzaCaseStudy, (a) => `/allegati/${a}`)}
         </div>
       </aside>
     </div>

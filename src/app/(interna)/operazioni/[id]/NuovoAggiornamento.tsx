@@ -1,10 +1,11 @@
 "use client";
 // "Nuovo aggiornamento" del diario: titolo, testo (Markdown), data,
-// visibilita' e fino a 6 foto, caricate una alla volta dopo il salvataggio.
+// visibilita', fino a 6 foto e 6 documenti PDF, caricati uno alla volta dopo
+// il salvataggio.
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { MASSIMO_FOTO_AGGIORNAMENTO, VISIBILITA_AGGIORNAMENTO } from "@/lib/contenuti/definizioni";
-import { caricaFotoAggiornamento, eliminaAggiornamentoOperazione, nuovoAggiornamento } from "../azioni";
+import { MASSIMO_ALLEGATI_AGGIORNAMENTO, MASSIMO_FOTO_AGGIORNAMENTO, VISIBILITA_AGGIORNAMENTO } from "@/lib/contenuti/definizioni";
+import { caricaAllegatoAggiornamento, caricaFotoAggiornamento, eliminaAggiornamentoOperazione, nuovoAggiornamento } from "../azioni";
 
 function oggi(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Rome" }).format(new Date());
@@ -18,12 +19,14 @@ export default function NuovoAggiornamento({ operazioneId }: { operazioneId: str
   const [data, setData] = useState(oggi());
   const [visibilita, setVisibilita] = useState("interessati");
   const [foto, setFoto] = useState<File[]>([]);
+  const [documenti, setDocumenti] = useState<File[]>([]);
   const [messaggio, setMessaggio] = useState<{ ok: boolean; testo: string } | null>(null);
   const [inCorso, avvia] = useTransition();
 
   function pubblica() {
     setMessaggio(null);
     if (foto.length > MASSIMO_FOTO_AGGIORNAMENTO) return setMessaggio({ ok: false, testo: `Al massimo ${MASSIMO_FOTO_AGGIORNAMENTO} foto.` });
+    if (documenti.length > MASSIMO_ALLEGATI_AGGIORNAMENTO) return setMessaggio({ ok: false, testo: `Al massimo ${MASSIMO_ALLEGATI_AGGIORNAMENTO} documenti.` });
     avvia(async () => {
       const esito = await nuovoAggiornamento(operazioneId, { titolo, testo, data, visibilita }).catch(() => null);
       if (!esito?.ok) return setMessaggio({ ok: false, testo: esito && !esito.ok ? esito.errore : "Pubblicazione non riuscita." });
@@ -36,11 +39,20 @@ export default function NuovoAggiornamento({ operazioneId }: { operazioneId: str
         const r = await caricaFotoAggiornamento(dati).catch(() => null);
         if (!r?.ok) errori.push(`${f.name}: ${r && !r.ok ? r.errore : "non caricata"}`);
       }
+      for (const f of documenti) {
+        const dati = new FormData();
+        dati.set("aggiornamentoId", esito.id);
+        dati.set("operazioneId", operazioneId);
+        dati.set("file", f);
+        const r = await caricaAllegatoAggiornamento(dati).catch(() => null);
+        if (!r?.ok) errori.push(`${f.name}: ${r && !r.ok ? r.errore : "non caricato"}`);
+      }
       setTitolo("");
       setTesto("");
       setFoto([]);
+      setDocumenti([]);
       setAperto(false);
-      setMessaggio(errori.length ? { ok: false, testo: `Aggiornamento pubblicato, ma alcune foto no. ${errori.join(" ")}` } : { ok: true, testo: "Aggiornamento pubblicato." });
+      setMessaggio(errori.length ? { ok: false, testo: `Aggiornamento pubblicato, ma alcuni file no. ${errori.join(" ")}` } : { ok: true, testo: "Aggiornamento pubblicato." });
       router.refresh();
     });
   }
@@ -84,6 +96,10 @@ export default function NuovoAggiornamento({ operazioneId }: { operazioneId: str
       <div>
         <label className="etichetta" htmlFor="agg-foto">Foto (fino a {MASSIMO_FOTO_AGGIORNAMENTO}, jpg, png o webp)</label>
         <input id="agg-foto" type="file" multiple accept="image/jpeg,image/png,image/webp" onChange={(e) => setFoto(Array.from(e.target.files ?? []))} />
+      </div>
+      <div>
+        <label className="etichetta" htmlFor="agg-documenti">Documenti PDF (fino a {MASSIMO_ALLEGATI_AGGIORNAMENTO}, 20 MB ciascuno)</label>
+        <input id="agg-documenti" type="file" multiple accept="application/pdf" onChange={(e) => setDocumenti(Array.from(e.target.files ?? []))} />
       </div>
       {messaggio ? <span style={{ fontSize: 13, color: messaggio.ok ? "#3d5a3d" : "#a33" }}>{messaggio.testo}</span> : null}
       <div style={{ display: "flex", gap: 8 }}>

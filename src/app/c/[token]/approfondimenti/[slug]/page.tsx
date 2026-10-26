@@ -61,6 +61,7 @@ export default async function ApprofondimentoPage({ params }: { params: Promise<
           contenutoMostrato(c),
           c.copertina ? `/c/${token}/contenuti/${c.id}/copertina` : null,
           ctx.impostazioni.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA,
+          (id) => `/c/${token}/allegati/${id}`,
         )}
         <p className="tenue" style={{ fontSize: 14, marginTop: 8 }}>
           Vuoi parlarne? {ctx.investitore.referente ?? "Il tuo referente"} è a disposizione: lo trovi nella tua area.

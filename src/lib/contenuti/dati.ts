@@ -3,7 +3,7 @@
 // nell'archivio, case study da un'operazione conclusa, letture e
 // condivisioni (ClubEvento). Ogni funzione riceve l'utente e ricontrolla i
 // permessi (src/lib/permessi.ts).
-import { Prisma, type ClubContenuto } from "@prisma/client";
+import { Prisma, type ClubAllegato, type ClubContenuto } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   puoModificareContenuto,
@@ -17,6 +17,7 @@ import { leggiPercentuale } from "@/lib/numeri";
 import { datiOperazione } from "@/lib/operazioni/dati";
 import { inEuro } from "@/lib/operazioni/definizioni";
 import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
+import { allegatoMostrato, ORDINE_ALLEGATI } from "@/lib/allegati";
 import type { Rif } from "@/lib/riferimento";
 import {
   ARGOMENTI,
@@ -40,7 +41,9 @@ function num(d: Prisma.Decimal | null): number | null {
   return d === null ? null : Number(d);
 }
 
-export function contenutoMostrato(c: ClubContenuto): ContenutoMostrato {
+const CON_ALLEGATI = { allegati: { orderBy: ORDINE_ALLEGATI } };
+
+export function contenutoMostrato(c: ClubContenuto & { allegati?: ClubAllegato[] }): ContenutoMostrato {
   return {
     id: c.id,
     tipo: c.tipo,
@@ -58,10 +61,11 @@ export function contenutoMostrato(c: ClubContenuto): ContenutoMostrato {
     durataRealeMesi: c.durataRealeMesi,
     notaRisultati: c.notaRisultati,
     data: c.pubblicatoIl?.toISOString() ?? null,
+    allegati: (c.allegati ?? []).map(allegatoMostrato),
   };
 }
 
-function contenutoInterno(c: ClubContenuto): ContenutoInterno {
+function contenutoInterno(c: ClubContenuto & { allegati?: ClubAllegato[] }): ContenutoInterno {
   return {
     ...contenutoMostrato(c),
     stato: c.stato,
@@ -77,13 +81,14 @@ export async function contenutiPerUtente(utente: UtenteClub): Promise<ContenutoI
   const righe = await prisma.clubContenuto.findMany({
     where: utente.visibilita === "tutti" ? {} : { stato: "pubblicato" },
     orderBy: [{ updatedAt: "desc" }],
+    include: CON_ALLEGATI,
   });
   return righe.map(contenutoInterno);
 }
 
 export async function contenutoPerUtente(utente: UtenteClub, id: string): Promise<ContenutoInterno | null> {
   if (!id) return null;
-  const c = await prisma.clubContenuto.findUnique({ where: { id } });
+  const c = await prisma.clubContenuto.findUnique({ where: { id }, include: CON_ALLEGATI });
   return c && puoVedereContenuto(utente, c) ? contenutoInterno(c) : null;
 }
 
@@ -96,13 +101,13 @@ export async function copertinaPerUtente(utente: UtenteClub, id: string): Promis
 // --- Portale cliente: solo i pubblicati ---
 
 export async function contenutiPubblicati(): Promise<ContenutoMostrato[]> {
-  const righe = await prisma.clubContenuto.findMany({ where: { stato: "pubblicato" }, orderBy: { pubblicatoIl: "desc" } });
+  const righe = await prisma.clubContenuto.findMany({ where: { stato: "pubblicato" }, orderBy: { pubblicatoIl: "desc" }, include: CON_ALLEGATI });
   return righe.map(contenutoMostrato);
 }
 
-export async function contenutoPubblicato(slug: string): Promise<ClubContenuto | null> {
+export async function contenutoPubblicato(slug: string): Promise<(ClubContenuto & { allegati: ClubAllegato[] }) | null> {
   if (!slug) return null;
-  const c = await prisma.clubContenuto.findUnique({ where: { slug } });
+  const c = await prisma.clubContenuto.findUnique({ where: { slug }, include: CON_ALLEGATI });
   return c && c.stato === "pubblicato" ? c : null;
 }
 

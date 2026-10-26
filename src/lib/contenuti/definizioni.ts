@@ -41,6 +41,11 @@ export const STATI_CONTENUTO: (Opzione<StatoContenuto> & { classe: string })[] =
 
 export const MASSIMO_SOMMARIO = 300;
 export const MASSIMO_FOTO_AGGIORNAMENTO = 6;
+// Documenti PDF allegati (fino a 20 MB ciascuno, come i documenti delle operazioni).
+export const MASSIMO_ALLEGATI_CONTENUTO = 10;
+export const MASSIMO_ALLEGATI_AGGIORNAMENTO = 6;
+
+export type AllegatoMostrato = { id: string; nome: string; dimensione: number };
 
 export const VISIBILITA_AGGIORNAMENTO: Opzione<"interessati" | "tutti-compatibili">[] = [
   { valore: "interessati", etichetta: "Solo chi ha manifestato interesse o ha i dettagli sbloccati" },
@@ -94,4 +99,5 @@ export type ContenutoMostrato = {
   durataRealeMesi: number | null;
   notaRisultati: string | null;
   data: string | null; // ISO: data di pubblicazione
+  allegati: AllegatoMostrato[];
 };

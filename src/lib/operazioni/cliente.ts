@@ -97,6 +97,12 @@ export function fileVisibileAlCliente(f: Pick<FileMostrato, "tipo" | "visibilita
   return livello === "completa" || (f.tipo === "foto" && f.visibilita === "anteprima");
 }
 
+// Aggiornamento del diario visibile al cliente: nella scheda completa tutti,
+// nella sintetica solo quelli per "tutti-compatibili".
+export function aggiornamentoVisibileAlCliente(a: { visibilita: string }, livello: LivelloCliente): boolean {
+  return livello === "completa" || a.visibilita === "tutti-compatibili";
+}
+
 export function operazionePerCliente(op: OperazioneDati, file: FileMostrato[], livello: LivelloCliente): OperazioneCliente {
   const completa = livello === "completa";
   const estero = !inItalia(op.paese);

@@ -21,6 +21,7 @@ import {
 import { AZIONI_FLUSSO, type AzioneFlusso } from "@/lib/operazioni/definizioni";
 import { disiscritti } from "@/lib/disiscrizioni";
 import { aggiungiFotoAggiornamento, creaAggiornamento, eliminaAggiornamento, type InputAggiornamento } from "@/lib/operazioni/aggiornamenti";
+import { aggiungiAllegatoAggiornamento } from "@/lib/allegati";
 
 type Esito = { ok: true } | { ok: false; errore: string; motivi?: string[] };
 
@@ -138,5 +139,16 @@ export async function caricaFotoAggiornamento(dati: FormData): Promise<Esito> {
 export async function eliminaAggiornamentoOperazione(operazioneId: string, id: string): Promise<Esito> {
   const esito = await eliminaAggiornamento(await utenteConAccesso(), id);
   if (esito.ok) aggiorna(operazioneId);
+  return esito;
+}
+
+// Documento PDF allegato a un aggiornamento (uno per chiamata, dopo averlo creato).
+export async function caricaAllegatoAggiornamento(dati: FormData): Promise<Esito> {
+  const utente = await utenteConAccesso();
+  const id = String(dati.get("aggiornamentoId") ?? "");
+  const file = dati.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, errore: "Scegli un documento PDF." };
+  const esito = await aggiungiAllegatoAggiornamento(utente, id, file.name, new Uint8Array(await file.arrayBuffer()));
+  if (esito.ok) aggiorna(String(dati.get("operazioneId") ?? ""));
   return esito;
 }

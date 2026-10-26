@@ -21,6 +21,7 @@ import {
   type InputContenuto,
 } from "@/lib/contenuti/dati";
 import { componiMessaggioCondivisione, MESSAGGIO_CONDIVISIONE_PREDEFINITO } from "@/lib/contenuti/testi";
+import { aggiungiAllegatoContenuto, rimuoviAllegato } from "@/lib/allegati";
 
 type Esito = { ok: true } | { ok: false; errore: string };
 
@@ -87,4 +88,21 @@ export async function condividiContenuto(contenutoId: string, chiave: string): P
   const testo = componiMessaggioCondivisione(modello, scheda.investitore.nome, c.titolo, link);
   await registraCondivisione(utente, c.id, scheda.investitore.rif);
   return { ok: true, url: linkWhatsapp(numero, testo) };
+}
+
+// Documento PDF allegato a un contenuto (uno per chiamata).
+export async function caricaAllegatoContenuto(dati: FormData): Promise<Esito> {
+  const utente = await utenteConAccesso();
+  const id = String(dati.get("id") ?? "");
+  const file = dati.get("file");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, errore: "Scegli un documento PDF." };
+  const esito = await aggiungiAllegatoContenuto(utente, id, file.name, new Uint8Array(await file.arrayBuffer()));
+  if (esito.ok) aggiorna(id);
+  return esito;
+}
+
+export async function rimuoviAllegatoContenuto(id: string, allegatoId: string): Promise<Esito> {
+  const esito = await rimuoviAllegato(await utenteConAccesso(), allegatoId);
+  if (esito.ok) aggiorna(id);
+  return esito;
 }

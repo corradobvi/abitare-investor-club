@@ -4,13 +4,15 @@
 // Chi li vede nel portale (oltre ai permessi di src/lib/operazioni/interessi.ts):
 // - scheda completa (manifestazione o sblocco): tutti gli aggiornamenti;
 // - scheda sintetica: solo quelli con visibilita "tutti-compatibili".
-import type { ClubAggiornamentoOperazione } from "@prisma/client";
+import type { ClubAggiornamentoOperazione, ClubAllegato } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { puoEliminareAggiornamento, puoPubblicareAggiornamento, puoVedereOperazione, type UtenteClub } from "@/lib/permessi";
 import { caricaFile, eliminaFile, nuovaChiave, verificaFile } from "@/lib/archivio";
 import { MASSIMO_FOTO_AGGIORNAMENTO } from "@/lib/contenuti/definizioni";
 import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
-import type { LivelloCliente } from "@/lib/operazioni/cliente";
+import { aggiornamentoVisibileAlCliente, type LivelloCliente } from "@/lib/operazioni/cliente";
+import { allegatoMostrato, eliminaAllegatiAggiornamento, ORDINE_ALLEGATI } from "@/lib/allegati";
+import type { AllegatoMostrato } from "@/lib/contenuti/definizioni";
 import type { Rif } from "@/lib/riferimento";
 
 export type AggiornamentoMostrato = {
@@ -22,9 +24,12 @@ export type AggiornamentoMostrato = {
   foto: number; // quante foto (si aprono per posizione)
   visibilita: string;
   pubblicatoDaUserId: string;
+  allegati: AllegatoMostrato[]; // documenti PDF
 };
 
-function mostrato(a: ClubAggiornamentoOperazione): AggiornamentoMostrato {
+const CON_ALLEGATI = { allegati: { orderBy: ORDINE_ALLEGATI } };
+
+function mostrato(a: ClubAggiornamentoOperazione & { allegati?: ClubAllegato[] }): AggiornamentoMostrato {
   return {
     id: a.id,
     operazioneId: a.operazioneId,
@@ -34,13 +39,14 @@ function mostrato(a: ClubAggiornamentoOperazione): AggiornamentoMostrato {
     foto: a.foto.length,
     visibilita: a.visibilita,
     pubblicatoDaUserId: a.pubblicatoDaUserId,
+    allegati: (a.allegati ?? []).map(allegatoMostrato),
   };
 }
 
 const ORDINE = [{ data: "desc" as const }, { createdAt: "desc" as const }];
 
 export async function aggiornamentiOperazione(operazioneId: string): Promise<AggiornamentoMostrato[]> {
-  return (await prisma.clubAggiornamentoOperazione.findMany({ where: { operazioneId }, orderBy: ORDINE })).map(mostrato);
+  return (await prisma.clubAggiornamentoOperazione.findMany({ where: { operazioneId }, orderBy: ORDINE, include: CON_ALLEGATI })).map(mostrato);
 }
 
 // Per il cliente, secondo il livello di accesso alla scheda.
@@ -48,13 +54,12 @@ export async function aggiornamentiPerCliente(operazioneId: string, livello: Liv
   const righe = await prisma.clubAggiornamentoOperazione.findMany({
     where: { operazioneId, ...(livello === "completa" ? {} : { visibilita: "tutti-compatibili" }) },
     orderBy: ORDINE,
+    include: CON_ALLEGATI,
   });
   return righe.map(mostrato);
 }
 
-export function aggiornamentoVisibileAlCliente(a: Pick<ClubAggiornamentoOperazione, "visibilita">, livello: LivelloCliente): boolean {
-  return livello === "completa" || a.visibilita === "tutti-compatibili";
-}
+export { aggiornamentoVisibileAlCliente };
 
 export type InputAggiornamento = { titolo: unknown; testo: unknown; data: unknown; visibilita: unknown };
 
@@ -102,6 +107,7 @@ export async function eliminaAggiornamento(utente: UtenteClub, id: string): Prom
   const a = await prisma.clubAggiornamentoOperazione.findUnique({ where: { id } });
   if (!a) return { ok: false, errore: "Aggiornamento non trovato." };
   for (const chiave of a.foto) await eliminaFile(chiave);
+  await eliminaAllegatiAggiornamento(id);
   await prisma.clubAggiornamentoOperazione.delete({ where: { id } });
   return { ok: true };
 }

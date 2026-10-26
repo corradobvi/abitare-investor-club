@@ -5,9 +5,11 @@ import type { ReactNode } from "react";
 import { renderMarkdown } from "@/lib/markdown";
 import type { AggiornamentoMostrato } from "@/lib/operazioni/aggiornamenti";
 import { data } from "@/lib/date";
+import { renderAllegati } from "@/app/contenuto-ui";
 
-// urlFoto: indirizzo della foto n; extra: pulsanti o note in fondo (area interna).
-export function renderAggiornamento(a: AggiornamentoMostrato, urlFoto: (n: number) => string, extra?: ReactNode) {
+// urlFoto: indirizzo della foto n; urlAllegato: indirizzo di un documento;
+// extra: pulsanti o note in fondo (area interna).
+export function renderAggiornamento(a: AggiornamentoMostrato, urlFoto: (n: number) => string, urlAllegato: (id: string) => string, extra?: ReactNode) {
   return (
     <li key={a.id} data-aggiornamento={a.id} style={{ listStyle: "none", padding: "14px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 8 }}>
       <div>
@@ -25,6 +27,7 @@ export function renderAggiornamento(a: AggiornamentoMostrato, urlFoto: (n: numbe
           ))}
         </div>
       ) : null}
+      {renderAllegati(a.allegati, urlAllegato)}
       {extra}
     </li>
   );

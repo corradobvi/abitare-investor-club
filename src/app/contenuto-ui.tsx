@@ -3,7 +3,7 @@
 // l'anteprima dell'editor. Funzioni di render semplici, usabili sia nelle
 // pagine server sia nei componenti client.
 import { renderMarkdown } from "@/lib/markdown";
-import { ARGOMENTI, LIVELLI, TIPI_CONTENUTO, differenzeCaseStudy, type ContenutoMostrato } from "@/lib/contenuti/definizioni";
+import { ARGOMENTI, LIVELLI, TIPI_CONTENUTO, differenzeCaseStudy, type AllegatoMostrato, type ContenutoMostrato } from "@/lib/contenuti/definizioni";
 import { etichetta } from "@/lib/operazioni/definizioni";
 import { euro, percentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
@@ -65,8 +65,35 @@ export function renderPrevistoReale(c: ContenutoMostrato, avvertenza: string) {
   );
 }
 
-// urlCopertina: indirizzo della copertina (null = senza copertina).
-export function renderContenuto(c: ContenutoMostrato, urlCopertina: string | null, avvertenzaCaseStudy: string) {
+function dimensione(byte: number): string {
+  return byte >= 1024 * 1024 ? `${(byte / 1024 / 1024).toLocaleString("it-IT", { maximumFractionDigits: 1 })} MB` : `${Math.max(1, Math.round(byte / 1024))} KB`;
+}
+
+// Documenti PDF allegati (contenuti e aggiornamenti del diario): url = indirizzo per aprirli.
+export function renderAllegati(allegati: AllegatoMostrato[], url: (id: string) => string) {
+  if (!allegati.length) return null;
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div className="etichetta">Documenti</div>
+      <ul style={{ listStyle: "none" }}>
+        {allegati.map((a) => (
+          <li key={a.id} style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", padding: "8px 0", borderTop: "1px solid var(--off-white)" }}>
+            <span style={{ fontSize: 14, overflowWrap: "anywhere" }}>
+              📄 {a.nome} <span className="tenue" style={{ fontSize: 12 }}>· PDF, {dimensione(a.dimensione)}</span>
+            </span>
+            <a className="pulsante leggero" href={url(a.id)} target="_blank" rel="noopener noreferrer">
+              Apri
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// urlCopertina: indirizzo della copertina (null = senza copertina);
+// urlAllegato: indirizzo di un documento allegato.
+export function renderContenuto(c: ContenutoMostrato, urlCopertina: string | null, avvertenzaCaseStudy: string, urlAllegato: (id: string) => string) {
   return (
     <article style={{ display: "grid", gap: 16 }}>
       {urlCopertina ? (
@@ -88,6 +115,7 @@ export function renderContenuto(c: ContenutoMostrato, urlCopertina: string | nul
       </div>
       {c.sommario ? <p style={{ fontSize: 17, lineHeight: 1.55, fontWeight: 500 }}>{c.sommario}</p> : null}
       {renderMarkdown(c.corpo)}
+      {renderAllegati(c.allegati, urlAllegato)}
       {c.tipo === "case-study" ? renderPrevistoReale(c, avvertenzaCaseStudy) : null}
     </article>
   );

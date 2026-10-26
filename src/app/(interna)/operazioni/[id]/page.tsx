@@ -494,6 +494,7 @@ export default async function SchedaOperazionePage({
               renderAggiornamento(
                 a,
                 (n) => `/operazioni/aggiornamenti/${a.id}/foto/${n}`,
+                (id) => `/allegati/${id}`,
                 <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                   <span className={a.visibilita === "tutti-compatibili" ? "badge ok" : "badge"}>
                     {a.visibilita === "tutti-compatibili" ? "tutti i compatibili" : "solo interessati"}

@@ -147,6 +147,8 @@ model ClubContenuto {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  allegati ClubAllegato[]
+
   @@index([tipo, stato])
 }
 
@@ -165,8 +167,31 @@ model ClubAggiornamentoOperazione {
   createdAt          DateTime @default(now())
 
   operazione ClubOperazione @relation(fields: [operazioneId], references: [id])
+  allegati   ClubAllegato[]
 
   @@index([operazioneId, data])
+}
+
+// Documento PDF allegato a un contenuto o a un aggiornamento del diario
+// (esattamente uno dei due: vincolo CHECK nella migrazione). Nell'archivio
+// privato; lo vede chi vede il contenuto o l'aggiornamento
+// (src/lib/allegati.ts).
+model ClubAllegato {
+  id               String   @id @default(cuid())
+  contenutoId      String?
+  aggiornamentoId  String?
+  nome             String // nome originale del file, mostrato
+  chiaveArchivio   String   @unique
+  dimensione       Int // byte
+  ordine           Int      @default(0)
+  caricatoDaUserId String // id User del CRM
+  createdAt        DateTime @default(now())
+
+  contenuto     ClubContenuto?               @relation(fields: [contenutoId], references: [id], onDelete: Restrict)
+  aggiornamento ClubAggiornamentoOperazione? @relation(fields: [aggiornamentoId], references: [id], onDelete: Restrict)
+
+  @@index([contenutoId])
+  @@index([aggiornamentoId])
 }
 
 // Punteggio d'interesse di un investitore (src/lib/punteggio.ts), salvato per

@@ -37,6 +37,7 @@ export default async function ModificaContenutoPage({
         id={c.id}
         iniziali={inputDaContenuto(c)}
         haCopertina={c.haCopertina}
+        allegati={c.allegati}
         avvertenzaCaseStudy={imp.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA}
         operazioni={operazioni.map(({ op }) => ({ valore: op.id, etichetta: `${op.codice} · ${op.titolo}` }))}
       />

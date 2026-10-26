@@ -479,7 +479,7 @@ export default function SchedaCliente({
         {aggiornamenti.length ? (
           <section className="riquadro">
             <h2 className="titolo" style={{ fontSize: 20 }}>Aggiornamenti</h2>
-            <ul ref={diario}>{aggiornamenti.map((a) => renderAggiornamento(a, (n) => `${base}/aggiornamenti/${a.id}/foto/${n}`))}</ul>
+            <ul ref={diario}>{aggiornamenti.map((a) => renderAggiornamento(a, (n) => `${base}/aggiornamenti/${a.id}/foto/${n}`, (id) => `${base}/allegati/${id}`))}</ul>
           </section>
         ) : null}
         {renderSimulatore()}

@@ -42,7 +42,12 @@ export default async function SchedaContenutoPage({ params }: { params: Promise<
       </Link>
       <div className="scheda-colonne" style={{ marginTop: 12 }}>
         <div className="riquadro" style={{ maxWidth: 720 }}>
-          {renderContenuto(c, c.haCopertina ? `/contenuti/${c.id}/copertina` : null, imp.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA)}
+          {renderContenuto(
+            c,
+            c.haCopertina ? `/contenuti/${c.id}/copertina` : null,
+            imp.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA,
+            (id) => `/allegati/${id}`,
+          )}
         </div>
         <aside style={{ display: "grid", gap: 16, alignContent: "start", position: "sticky", top: 16 }}>
           <section className="riquadro" style={{ display: "grid", gap: 12 }}>

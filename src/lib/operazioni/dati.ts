@@ -511,7 +511,8 @@ async function operazioneModificabile(utente: UtenteClub, id: string): Promise<C
   return op && puoVedereOperazione(utente, op) && puoModificareOperazione(utente, op) ? op : null;
 }
 
-function nomeFile(nome: string): string {
+// Nome di un file caricato, ripulito (si usa anche per gli allegati PDF).
+export function nomeFile(nome: string): string {
   const pulito = nome.replace(/[\u0000-\u001f\\/]+/g, "").trim();
   return (pulito || "file").slice(0, 200);
 }

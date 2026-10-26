@@ -24,6 +24,7 @@ export default async function NuovoContenutoPage() {
         id={null}
         iniziali={inputContenutoVuoto()}
         haCopertina={false}
+        allegati={[]}
         avvertenzaCaseStudy={imp.testoAvvertenzaCaseStudy || AVVERTENZA_CASE_STUDY_PREDEFINITA}
         operazioni={operazioni.map(({ op }) => ({ valore: op.id, etichetta: `${op.codice} · ${op.titolo}` }))}
       />

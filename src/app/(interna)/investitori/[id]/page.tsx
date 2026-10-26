@@ -3,14 +3,19 @@ import { notFound } from "next/navigation";
 import { puoScegliereReferente, utenteConAccesso } from "@/lib/permessi";
 import { nomeCompleto, schedaPerUtente, type ReferenteMostrato } from "@/lib/investitori";
 import { rispostePerProfilo } from "@/lib/profilo/archivio";
-import { invitoAttivo, invitoMostrato } from "@/lib/inviti";
+import { invitoAttivo, invitoMostrato, urlInvito } from "@/lib/inviti";
 import { opzioniReferente } from "@/lib/referenti";
 import type { ClubContattoNuovo } from "@prisma/client";
-import { data } from "@/lib/date";
+import { data, dataOra } from "@/lib/date";
+import { euro } from "@/lib/numeri";
+import { operazioniPerUtente } from "@/lib/operazioni/dati";
+import { manifestazioniInvestitore, operazioniSbloccate, type ManifestazioneInterna } from "@/lib/operazioni/interessi";
 import { disiscrizioniPerRif } from "@/lib/disiscrizioni";
 import { operazioniCompatibili, type OperazioneCompatibile } from "@/lib/operazioni/compatibili";
 import ModuloContatto from "../../ModuloContatto";
 import PulsantiConferma from "../../PulsantiConferma";
+import PulsanteSblocca from "../../PulsanteSblocca";
+import StatoManifestazione from "../../StatoManifestazione";
 import SchedaProfilo from "./SchedaProfilo";
 import { salvaDatiNuovo } from "./azioni";
 
@@ -25,7 +30,7 @@ function renderDato(etichetta: string, valore: React.ReactNode) {
   );
 }
 
-function renderOperazione(o: OperazioneCompatibile) {
+function renderOperazione(o: OperazioneCompatibile, chiave: string, sbloccate: Set<string>, interessate: Set<string>) {
   return (
     <li key={o.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -36,6 +41,35 @@ function renderOperazione(o: OperazioneCompatibile) {
       </div>
       {o.positivi.length ? <div style={{ fontSize: 13 }}>✓ {o.positivi.join(" · ")}</div> : null}
       {o.attenzione.length ? <div style={{ fontSize: 13, color: "#8a4b1f" }}>⚠ {o.attenzione.join(" · ")}</div> : null}
+      <div>
+        {interessate.has(o.id) ? (
+          <span className="badge ok">Ha manifestato interesse</span>
+        ) : (
+          <PulsanteSblocca operazioneId={o.id} chiave={chiave} sbloccata={sbloccate.has(o.id)} />
+        )}
+      </div>
+    </li>
+  );
+}
+
+const CONTATTO: Record<string, string> = { whatsapp: "WhatsApp", telefono: "telefono", email: "email" };
+
+function renderInteresse(m: ManifestazioneInterna, titoli: Map<string, string>) {
+  return (
+    <li key={m.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+        <span>
+          <Link href={`/operazioni/${m.operazioneId}`} style={{ fontWeight: 600, textDecoration: "none" }}>
+            {titoli.get(m.operazioneId) ?? "Operazione"}
+          </Link>
+          <span className="tenue" style={{ fontSize: 13 }}> · {dataOra(m.createdAt)} · preferisce {CONTATTO[m.contattoPreferito] ?? m.contattoPreferito}</span>
+        </span>
+        <strong style={{ fontVariantNumeric: "tabular-nums" }}>{euro(m.importoIndicativo)}</strong>
+      </div>
+      {m.nota ? <div style={{ fontSize: 13 }} className="testo-lungo">“{m.nota}”</div> : null}
+      <div>
+        <StatoManifestazione id={m.id} stato={m.stato} />
+      </div>
     </li>
   );
 }
@@ -54,12 +88,46 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) notFound();
   const { investitore, referente, profilo, impostazioni } = scheda;
-  const [link, compatibili, disiscrizioni] = await Promise.all([
+  const [link, compatibili, disiscrizioni, interessi, sbloccate, operazioni] = await Promise.all([
     invitoAttivo(investitore.rif),
     operazioniCompatibili(utente, rispostePerProfilo(profilo)),
     disiscrizioniPerRif([investitore.rif]),
+    manifestazioniInvestitore(investitore.rif),
+    operazioniSbloccate(investitore.rif),
+    operazioniPerUtente(utente),
   ]);
+  // Solo le operazioni che l'utente puo' vedere.
+  const titoli = new Map(operazioni.map((x) => [x.op.id, `${x.op.titolo} · ${x.op.codice}`]));
+  const interessiVisibili = interessi.filter((m) => titoli.has(m.operazioneId));
+  const interessate = new Set(interessi.map((m) => m.operazioneId));
   const disiscrittoIl = disiscrizioni.get(investitore.chiave)?.disiscrittoIl ?? null;
+
+  // Contatto di prova: niente dati da modificare, il link si apre da qui.
+  function renderIntestazioneProva(contatto: ClubContattoNuovo) {
+    return (
+      <section className="riquadro" style={{ marginTop: 12, marginBottom: 20, borderColor: "#c9a227" }}>
+        <h1 className="titolo" style={{ fontSize: 32 }}>
+          {nomeCompleto(investitore)} <span className="badge allerta" style={{ fontSize: 14, verticalAlign: "middle" }}>PROVA</span>
+        </h1>
+        <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.5 }}>
+          Contatto di prova per i collaudi del portale cliente: non conta nei totali, nelle fasi, nelle Novità e nei compatibili, e
+          non verrà mai importato nel CRM. Il suo link funziona per chi ha fatto l&apos;accesso al Club anche con il portale spento.
+        </p>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+          {link && impostazioni.urlPubblicoPortale ? (
+            <a className="pulsante" href={urlInvito(link.token, impostazioni)} target="_blank" rel="noopener noreferrer">
+              Apri il suo link
+            </a>
+          ) : (
+            <span className="tenue" style={{ fontSize: 13 }}>Nessun link attivo: crealo con &quot;Invita al Club&quot; qui sotto.</span>
+          )}
+          <span className="tenue" style={{ fontSize: 13 }}>
+            Referente: {referente.nome} · creato il {data(contatto.createdAt)}
+          </span>
+        </div>
+      </section>
+    );
+  }
 
   async function renderIntestazioneNuovo(contatto: ClubContattoNuovo) {
     const sceglie = puoScegliereReferente(utente.ruolo);
@@ -128,7 +196,11 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
         ← Tutti gli investitori
       </Link>
 
-      {investitore.contatto ? await renderIntestazioneNuovo(investitore.contatto) : renderIntestazioneCrm()}
+      {investitore.contatto?.prova
+        ? renderIntestazioneProva(investitore.contatto)
+        : investitore.contatto
+          ? await renderIntestazioneNuovo(investitore.contatto)
+          : renderIntestazioneCrm()}
 
       <SchedaProfilo
         chiave={investitore.chiave}
@@ -145,6 +217,18 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
       />
 
       <section className="riquadro" style={{ marginTop: 20 }}>
+        <h2 className="titolo" style={{ fontSize: 22 }}>Interessi ({interessiVisibili.length})</h2>
+        <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
+          Manifestazioni d&apos;interesse dal portale: importi indicativi in euro, non vincolanti.
+        </p>
+        {interessiVisibili.length ? (
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{interessiVisibili.map((m) => renderInteresse(m, titoli))}</ul>
+        ) : (
+          <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessuna manifestazione d&apos;interesse.</p>
+        )}
+      </section>
+
+      <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22 }}>Operazioni compatibili ({compatibili.length})</h2>
         <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
           Solo operazioni pubblicate, ordinate per punteggio. Rendimenti stimati, mai garantiti.
@@ -156,7 +240,7 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
           </p>
         ) : null}
         {compatibili.length ? (
-          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(renderOperazione)}</ul>
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map((o) => renderOperazione(o, investitore.chiave, sbloccate, interessate))}</ul>
         ) : (
           <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessuna operazione pubblicata è compatibile con il profilo.</p>
         )}

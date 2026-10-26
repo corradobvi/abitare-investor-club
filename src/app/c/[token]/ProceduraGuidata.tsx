@@ -3,6 +3,10 @@
 // (nell'ordine di domande.ts, solo quelle applicabili), consensi, fine.
 // Usa gli stessi helper del profilo dell'area interna: domande, completezza,
 // coerenza. In anteprima non salva nulla.
+//
+// Con "modifica" (dal riepilogo "Il mio profilo" dell'area del cliente) si
+// apre direttamente su quella domanda: dopo la risposta si torna all'area,
+// passando prima dalle eventuali domande diventate applicabili e senza risposta.
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DOMANDE_PER_CHIAVE,
@@ -15,7 +19,7 @@ import {
 } from "@/lib/profilo/domande";
 import { completezzaProfilo } from "@/lib/profilo/completezza";
 import { avvisiCoerenzaCliente } from "@/lib/profilo/coerenza";
-import { renderFasciaAnteprima, renderMarchio } from "@/app/portale-ui";
+import { renderFasciaAnteprima, renderMarchio, TESTO_FASCIA_PROVA } from "@/app/portale-ui";
 import { registraApertura, salvaConsensi, salvaRisposta } from "./azioni";
 
 type Props = {
@@ -24,7 +28,10 @@ type Props = {
   referente: string | null;
   risposteIniziali: Risposte;
   anteprima: boolean;
+  prova: boolean; // contatto di prova aperto dallo staff: fascia in alto
   urlInformativa: string;
+  urlArea: string; // area del cliente (profilo completo)
+  modifica: ChiaveDomanda | null;
 };
 
 type Schermata =
@@ -55,7 +62,7 @@ function passoDopo(chiave: ChiaveDomanda, r: Risposte): Schermata {
 export default function ProceduraGuidata(props: Props) {
   const { token, nome, referente, anteprima } = props;
   const [risposte, setRisposte] = useState<Risposte>(props.risposteIniziali);
-  const [schermata, setSchermata] = useState<Schermata>({ tipo: "benvenuto" });
+  const [schermata, setSchermata] = useState<Schermata>(props.modifica ? { tipo: "domanda", chiave: props.modifica } : { tipo: "benvenuto" });
   const [avvisi, setAvvisi] = useState<string[]>([]);
   const [errore, setErrore] = useState("");
   const [inCorso, setInCorso] = useState(false);
@@ -85,6 +92,18 @@ export default function ProceduraGuidata(props: Props) {
     setSchermata(s);
   }
 
+  function tornaAllArea() {
+    window.location.assign(props.urlArea);
+  }
+
+  // Passo dopo una risposta: in modifica si torna all'area appena il profilo
+  // e' di nuovo completo.
+  function avanti(chiave: ChiaveDomanda, r: Risposte) {
+    if (!props.modifica) return vai(passoDopo(chiave, r));
+    if (completezzaProfilo(r).completo) return tornaAllArea();
+    vai(primoPassoAperto(r));
+  }
+
   async function rispondi(d: Domanda, valore: string | boolean) {
     if (inCorso) return;
     setErrore("");
@@ -104,7 +123,7 @@ export default function ProceduraGuidata(props: Props) {
       setAvvisi(gentili); // resta sulla domanda: il cliente legge e poi continua
       return;
     }
-    vai(passoDopo(d.chiave, nuove));
+    avanti(d.chiave, nuove);
   }
 
   async function completa() {
@@ -213,12 +232,16 @@ export default function ProceduraGuidata(props: Props) {
           <button
             type="button"
             className="collegamento"
-            onClick={() => vai(precedente ? { tipo: "domanda", chiave: precedente.chiave } : { tipo: "benvenuto" })}
+            onClick={() =>
+              props.modifica && completo
+                ? tornaAllArea()
+                : vai(precedente ? { tipo: "domanda", chiave: precedente.chiave } : { tipo: "benvenuto" })
+            }
           >
-            ← Indietro
+            {props.modifica && completo ? "← Torna alla tua area" : "← Indietro"}
           </button>
           {haRisposta(valore) ? (
-            <button type="button" className="pulsante grande" disabled={inCorso} onClick={() => vai(passoDopo(chiave, risposte))}>
+            <button type="button" className="pulsante grande" disabled={inCorso} onClick={() => avanti(chiave, risposte)}>
               {avvisi.length > 0 ? "Continua" : "Avanti"}
             </button>
           ) : null}
@@ -289,7 +312,7 @@ export default function ProceduraGuidata(props: Props) {
     const passi = [
       `${chi} esamina il tuo profilo.`,
       "Ti contatterà nel modo che preferisci per conoscerti meglio.",
-      "Riceverai solo proposte in linea con le tue preferenze. Puoi aggiornare le risposte riaprendo questo link.",
+      "Riceverai solo proposte in linea con le tue preferenze. Da questo link vedi le operazioni per te e puoi aggiornare le risposte.",
     ];
     return (
       <div className="portale-corpo portale-centro">
@@ -301,6 +324,11 @@ export default function ProceduraGuidata(props: Props) {
         <p className="testo-portale" style={{ marginTop: 14 }}>
           {chi} ti contatterà per presentarti le operazioni più adatte a te.
         </p>
+        <div style={{ marginTop: 22 }}>
+          <button type="button" className="pulsante grande pieno" onClick={tornaAllArea}>
+            Vedi le operazioni per te
+          </button>
+        </div>
         <div className="riquadro" style={{ marginTop: 26 }}>
           <h2 className="titolo" style={{ fontSize: 22, textAlign: "left" }}>Cosa succede ora</h2>
           <ol className="elenco-passi">
@@ -331,7 +359,7 @@ export default function ProceduraGuidata(props: Props) {
 
   return (
     <main className="portale">
-      {anteprima ? renderFasciaAnteprima() : null}
+      {anteprima ? renderFasciaAnteprima() : props.prova ? renderFasciaAnteprima(TESTO_FASCIA_PROVA) : null}
       {schermata.tipo === "domanda" || schermata.tipo === "consensi" ? (
         <div style={{ paddingTop: 20 }}>{renderMarchio(false)}</div>
       ) : null}

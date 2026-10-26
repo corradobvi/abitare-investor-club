@@ -1,9 +1,10 @@
 import { utenteImpostazioni } from "@/lib/permessi";
-import { leggiImpostazioni, URL_INFORMATIVA_PRIVACY_PREDEFINITO } from "@/lib/impostazioni";
+import { cellulariReferenti, leggiImpostazioni, URL_INFORMATIVA_PRIVACY_PREDEFINITO } from "@/lib/impostazioni";
 import { MESSAGGIO_INVITO_NUOVI_PREDEFINITO, MESSAGGIO_INVITO_PREDEFINITO } from "@/lib/messaggio-invito";
 import { opzioniReferente } from "@/lib/referenti";
 import { MESSAGGIO_PROPOSTA_PREDEFINITO, TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import FormImpostazioni from "./FormImpostazioni";
+import CellulariReferenti from "./CellulariReferenti";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,8 @@ export default async function ImpostazioniPage() {
         testoLegale={imp.testoLegaleQuote ?? ""}
         messaggioProposta={imp.messaggioPropostaOperazioneWhatsApp || MESSAGGIO_PROPOSTA_PREDEFINITO}
       />
+
+      <CellulariReferenti referenti={await opzioniReferente(null)} iniziali={cellulariReferenti(imp)} />
 
       <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Solo consultazione</h2>

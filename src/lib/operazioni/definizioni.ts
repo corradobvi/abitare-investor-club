@@ -276,3 +276,44 @@ export function importoMostrato(
   const e = inEuro(op, n);
   return { importo: importoIn(n, valuta), inEuro: e === null ? null : `≈ ${importoIn(e, "EUR")}` };
 }
+
+// --- Manifestazioni d'interesse (portale cliente) ---
+
+export type StatoInteresse = "nuova" | "in-contatto" | "chiusa-positiva" | "chiusa-negativa" | "ritirata";
+
+// classe = classe del badge in globals.css.
+export const STATI_INTERESSE: (Opzione<StatoInteresse> & { classe: string })[] = [
+  { valore: "nuova", etichetta: "Nuova", classe: "badge allerta" },
+  { valore: "in-contatto", etichetta: "In contatto", classe: "badge sabbia" },
+  { valore: "chiusa-positiva", etichetta: "Chiusa · positiva", classe: "badge ok" },
+  { valore: "chiusa-negativa", etichetta: "Chiusa · negativa", classe: "badge spento" },
+  { valore: "ritirata", etichetta: "Ritirata dal cliente", classe: "badge spento" },
+];
+
+// Attiva = ancora da gestire: una sola per investitore e operazione.
+export const STATI_INTERESSE_ATTIVI: StatoInteresse[] = ["nuova", "in-contatto"];
+
+// Stati che lo staff puo' impostare (la ritirata la decide solo il cliente).
+export const STATI_INTERESSE_STAFF: StatoInteresse[] = ["in-contatto", "chiusa-positiva", "chiusa-negativa"];
+
+export function statoInteresseMostrato(stato: string): { etichetta: string; classe: string } {
+  const s = STATI_INTERESSE.find((x) => x.valore === stato);
+  return s ? { etichetta: s.etichetta, classe: s.classe } : { etichetta: stato, classe: "badge" };
+}
+
+// Raccolta delle operazioni in quote, mostrata al cliente: SOLO dall'importo
+// impegnato confermato dallo staff, mai dalle manifestazioni indicative.
+// Quote disponibili = quante quote minime stanno ancora nel residuo.
+export function raccolta(
+  op: Pick<OperazioneDati, "formula" | "importoDaRaccogliere" | "importoImpegnato" | "quotaMinima">,
+): { percentuale: number; impegnato: number; totale: number; quoteDisponibili: number | null } | null {
+  if (op.formula !== "quota" || !op.importoDaRaccogliere) return null;
+  const impegnato = Math.min(op.importoImpegnato ?? 0, op.importoDaRaccogliere);
+  const residuo = op.importoDaRaccogliere - impegnato;
+  return {
+    percentuale: Math.round((impegnato / op.importoDaRaccogliere) * 100),
+    impegnato,
+    totale: op.importoDaRaccogliere,
+    quoteDisponibili: op.quotaMinima ? Math.floor(residuo / op.quotaMinima) : null,
+  };
+}

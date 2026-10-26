@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { puoModificareOperazione, utenteConAccesso } from "@/lib/permessi";
+import { puoAggiornareRaccolta, puoModificareOperazione, utenteConAccesso } from "@/lib/permessi";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { utentiPerId } from "@/lib/crm/lettura";
 import { azioniPermesse, copertina, eventiOperazione, operazionePerUtente, type FileMostrato } from "@/lib/operazioni/dati";
 import { investitoriCompatibili, type InvestitoreCompatibile } from "@/lib/operazioni/compatibili";
+import { manifestazioniOperazione, sblocchiOperazione, type ManifestazioneInterna } from "@/lib/operazioni/interessi";
 import {
   FORMULE,
   PARTNER,
@@ -12,7 +13,9 @@ import {
   costoTotale,
   eRendita,
   etichetta,
+  STATI_INTERESSE_ATTIVI,
   importoMostrato,
+  inEuro,
   inItalia,
   margineLordoStimato,
   motiviBloccoPubblicazione,
@@ -23,10 +26,13 @@ import {
 } from "@/lib/operazioni/definizioni";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import { FASI } from "@/lib/profilo/fase";
-import { cambio, percentuale } from "@/lib/numeri";
+import { cambio, euro, percentuale } from "@/lib/numeri";
 import { data, dataOra } from "@/lib/date";
 import PulsantiFlusso from "./PulsantiFlusso";
 import PropostaWhatsapp from "./PropostaWhatsapp";
+import ImportoImpegnato from "./ImportoImpegnato";
+import PulsanteSblocca from "../../PulsanteSblocca";
+import StatoManifestazione from "../../StatoManifestazione";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +45,19 @@ const EVENTI: Record<string, string> = {
   "operazione-conclusa": "Conclusa",
   "operazione-ritirata": "Ritirata",
   "operazione-proposta": "Proposta a un investitore",
+  "interesse-manifestato": "Manifestazione d'interesse",
+  "interesse-ritirato": "Manifestazione ritirata dal cliente",
+  "interesse-stato-cambiato": "Stato di una manifestazione cambiato",
+  "operazione-sbloccata": "Dettagli sbloccati per un investitore",
+  "operazione-vista-anteprima": "Scheda sintetica vista da un cliente",
+  "operazione-vista-dettaglio": "Scheda completa vista da un cliente",
+  "documento-scaricato": "Documento aperto da un cliente",
 };
+
+const CONTATTO: Record<string, string> = { whatsapp: "WhatsApp", telefono: "telefono", email: "email" };
+
+// Manifestazioni che contano nel totale indicativo: attive o chiuse positive.
+const STATI_NEL_TOTALE = [...STATI_INTERESSE_ATTIVI, "chiusa-positiva"];
 
 const FILE_EVENTO: Record<string, string> = {
   caricato: "file caricato",
@@ -296,7 +314,7 @@ export default async function SchedaOperazionePage({
     );
   }
 
-  function renderInvestitore(i: InvestitoreCompatibile) {
+  function renderInvestitore(i: InvestitoreCompatibile, sbloccati: Set<string>, interessati: Set<string>) {
     return (
       <li key={i.chiave} style={{ padding: "12px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 6 }}>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
@@ -310,20 +328,89 @@ export default async function SchedaOperazionePage({
         </div>
         {i.positivi.length ? <div style={{ fontSize: 13 }}>✓ {i.positivi.join(" · ")}</div> : null}
         {i.attenzione.length ? <div style={{ fontSize: 13, color: "#8a4b1f" }}>⚠ {i.attenzione.join(" · ")}</div> : null}
-        <div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {op.stato !== "pubblicata" ? null : i.whatsapp ? (
             <PropostaWhatsapp operazioneId={op.id} chiave={i.chiave} href={i.whatsapp} />
           ) : (
             <span className="tenue" style={{ fontSize: 12 }}>Manca il cellulare: niente WhatsApp.</span>
           )}
+          {interessati.has(i.chiave) ? (
+            <span className="badge ok">Ha manifestato interesse</span>
+          ) : op.stato === "pubblicata" ? (
+            <PulsanteSblocca operazioneId={op.id} chiave={i.chiave} sbloccata={sbloccati.has(i.chiave)} />
+          ) : null}
         </div>
       </li>
     );
   }
 
-  async function renderCompatibili() {
-    const { compatibili, possibili } = await investitoriCompatibili(utente, op);
+  function renderManifestazione(m: ManifestazioneInterna, nomi: Map<string, { nomeCompleto: string; prova: boolean }>) {
+    const chi = nomi.get(m.chiaveInvestitore);
     return (
+      <li key={m.id} style={{ padding: "10px 0", borderTop: "1px solid var(--off-white)", display: "grid", gap: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+          <span>
+            <Link href={`/investitori/${m.chiaveInvestitore}`} style={{ fontWeight: 600, textDecoration: "none" }}>
+              {chi?.nomeCompleto}
+            </Link>
+            {chi?.prova ? <span className="badge allerta" style={{ marginLeft: 6 }}>PROVA</span> : null}
+            <span className="tenue" style={{ fontSize: 13 }}> · {dataOra(m.createdAt)} · preferisce {CONTATTO[m.contattoPreferito] ?? m.contattoPreferito}</span>
+          </span>
+          <strong style={{ fontVariantNumeric: "tabular-nums" }}>{euro(m.importoIndicativo)}</strong>
+        </div>
+        {m.nota ? <div style={{ fontSize: 13 }} className="testo-lungo">“{m.nota}”</div> : null}
+        <div>
+          <StatoManifestazione id={m.id} stato={m.stato} />
+        </div>
+      </li>
+    );
+  }
+
+  // Manifestazioni d'interesse degli investitori visibili all'utente, con il
+  // totale indicativo (contatti di prova esclusi) confrontato con l'obiettivo.
+  function renderManifestazioni(lista: ManifestazioneInterna[], nomi: Map<string, { nomeCompleto: string; prova: boolean }>) {
+    const visibili = lista.filter((m) => nomi.has(m.chiaveInvestitore));
+    const totale = visibili
+      .filter((m) => STATI_NEL_TOTALE.includes(m.stato as never) && !nomi.get(m.chiaveInvestitore)?.prova)
+      .reduce((a, m) => a + m.importoIndicativo, 0);
+    const obiettivo = inEuro(op, quota ? op.importoDaRaccogliere : op.capitaleRichiesto);
+    return (
+      <section className="riquadro">
+        <h2 className="titolo" style={{ fontSize: 22 }}>Manifestazioni d&apos;interesse ({visibili.length})</h2>
+        <p style={{ fontSize: 14, marginTop: 6 }}>
+          Totale indicativo <strong>{euro(totale)}</strong>
+          {obiettivo ? (
+            <span className="tenue">
+              {" "}
+              su {euro(obiettivo)} {quota ? "da raccogliere" : "di capitale richiesto"} ({Math.round((totale / obiettivo) * 100)}%)
+            </span>
+          ) : null}
+        </p>
+        <p className="tenue" style={{ fontSize: 12 }}>
+          Importi indicativi in euro, non vincolanti: contano le manifestazioni attive e le chiuse positive, senza i contatti di prova.
+          {quota ? " La barra di raccolta del cliente usa solo l'importo impegnato qui sotto." : ""}
+        </p>
+        {visibili.length ? <ul style={{ listStyle: "none", marginTop: 8 }}>{visibili.map((m) => renderManifestazione(m, nomi))}</ul> : null}
+        {quota && puoAggiornareRaccolta(utente.ruolo) && !["conclusa", "ritirata"].includes(op.stato) ? (
+          <div style={{ marginTop: 16, borderTop: "1px solid var(--off-white)", paddingTop: 14 }}>
+            <ImportoImpegnato operazioneId={op.id} iniziale={op.importoImpegnato} valuta={valutaDi(op)} />
+          </div>
+        ) : null}
+      </section>
+    );
+  }
+
+  async function renderCompatibili() {
+    const [{ compatibili, possibili, prova, visibili }, manifestazioni, sbloccati] = await Promise.all([
+      investitoriCompatibili(utente, op),
+      manifestazioniOperazione(op.id),
+      sblocchiOperazione(op.id),
+    ]);
+    const interessati = new Set(manifestazioni.map((m) => m.chiaveInvestitore));
+    const riga = (i: InvestitoreCompatibile) => renderInvestitore(i, sbloccati, interessati);
+    return (
+      <>
+      {renderManifestazioni(manifestazioni, visibili)}
       <section className="riquadro">
         <h2 className="titolo" style={{ fontSize: 22 }}>Investitori compatibili ({compatibili.length})</h2>
         <p className="tenue" style={{ fontSize: 12, marginTop: 2 }}>
@@ -333,12 +420,22 @@ export default async function SchedaOperazionePage({
         {compatibili.length === 0 ? (
           <p className="tenue" style={{ fontSize: 14, marginTop: 10 }}>Nessun investitore con profilo completo è compatibile.</p>
         ) : (
-          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(renderInvestitore)}</ul>
+          <ul style={{ listStyle: "none", marginTop: 8 }}>{compatibili.map(riga)}</ul>
         )}
         <h3 style={{ fontSize: 16, marginTop: 20 }}>Possibili, profilo incompleto ({possibili.length})</h3>
         <p className="tenue" style={{ fontSize: 12 }}>Valutati solo sulle risposte già date: conviene completare il profilo prima di proporre.</p>
-        {possibili.length ? <ul style={{ listStyle: "none", marginTop: 8 }}>{possibili.map(renderInvestitore)}</ul> : null}
+        {possibili.length ? <ul style={{ listStyle: "none", marginTop: 8 }}>{possibili.map(riga)}</ul> : null}
+        {prova.length ? (
+          <>
+            <h3 style={{ fontSize: 16, marginTop: 20 }}>
+              Contatti di prova ({prova.length}) <span className="badge allerta">PROVA</span>
+            </h3>
+            <p className="tenue" style={{ fontSize: 12 }}>Per i collaudi del portale: non contano nei totali.</p>
+            <ul style={{ listStyle: "none", marginTop: 8 }}>{prova.map(riga)}</ul>
+          </>
+        ) : null}
       </section>
+      </>
     );
   }
 
@@ -404,7 +501,7 @@ export default async function SchedaOperazionePage({
                   {renderDato("Numero massimo di soci", op.numeroMaxSoci ?? "—")}
                   {renderImporto(op, "Quota minima", op.quotaMinima)}
                   {renderImporto(op, "Importo da raccogliere", op.importoDaRaccogliere)}
-                  {renderImporto(op, "Importo impegnato", op.importoImpegnato, "aggiornato a mano")}
+                  {renderImporto(op, "Importo impegnato", op.importoImpegnato, "confermato a mano, è la barra del cliente")}
                 </div>
               </>
             ) : null}

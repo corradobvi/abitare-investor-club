@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { utentiPerId } from "@/lib/crm/lettura";
 import {
+  puoAggiornareRaccolta,
   puoCreareOperazioni,
   puoDecidereOperazioni,
   puoEssereReferente,
@@ -143,7 +144,6 @@ export type InputOperazione = {
   numeroMaxSoci: string;
   quotaMinima: string;
   importoDaRaccogliere: string;
-  importoImpegnato: string;
   prezzoAcquisto: string;
   costiLavori: string;
   altriCosti: string;
@@ -175,7 +175,7 @@ export type Errori = Partial<Record<keyof InputOperazione, string>>;
 
 type CampiSalvati = Omit<
   OperazioneDati,
-  "id" | "codice" | "stato" | "creatoDaUserId" | "pubblicataIl" | "scadenzaRaccolta" | "consegnaPrevista" | "cambioDel"
+  "id" | "codice" | "stato" | "creatoDaUserId" | "pubblicataIl" | "scadenzaRaccolta" | "consegnaPrevista" | "cambioDel" | "importoImpegnato"
 > & { scadenzaRaccolta: Date | null; consegnaPrevista: Date | null; cambioDel: Date | null };
 
 const MASSIMO_TESTO_BREVE = 120;
@@ -252,7 +252,6 @@ function leggiNumeri(input: Partial<InputOperazione>, errori: Errori) {
     numeroMaxSoci: intero("numeroMaxSoci", 1, 1000),
     quotaMinima: importo("quotaMinima"),
     importoDaRaccogliere: importo("importoDaRaccogliere"),
-    importoImpegnato: importo("importoImpegnato"),
     prezzoAcquisto: importo("prezzoAcquisto"),
     costiLavori: importo("costiLavori"),
     altriCosti: importo("altriCosti"),
@@ -321,7 +320,6 @@ async function leggiInput(
       numeroMaxSoci: quota ? numeri.numeroMaxSoci : null,
       quotaMinima: quota ? numeri.quotaMinima : null,
       importoDaRaccogliere: quota ? numeri.importoDaRaccogliere : null,
-      importoImpegnato: quota ? numeri.importoImpegnato : null,
       valoreRivenditaStimato: rendita ? null : numeri.valoreRivenditaStimato,
       canoneAnnuoStimato: rendita ? numeri.canoneAnnuoStimato : null,
       tipo: tipo!,
@@ -428,6 +426,34 @@ export async function modificaOperazione(
     prisma.clubEvento.create({ data: { operazioneId: id, tipo: "operazione-modificata", dati: { userId: utente.id, campi } } }),
   ]);
   return { ok: true, id };
+}
+
+// Importo gia' impegnato di un'operazione in quote, confermato a mano:
+// e' quello mostrato al cliente nella barra di raccolta (mai dalle
+// manifestazioni indicative). Nella valuta dell'operazione.
+export async function aggiornaImportoImpegnato(
+  utente: UtenteClub,
+  id: string,
+  testo: string,
+): Promise<{ ok: true } | { ok: false; errore: string }> {
+  if (!puoAggiornareRaccolta(utente.ruolo)) return { ok: false, errore: "Il tuo ruolo non può aggiornare la raccolta." };
+  const op = await prisma.clubOperazione.findUnique({ where: { id } });
+  if (!op || op.formula !== "quota" || ["conclusa", "ritirata"].includes(op.stato)) {
+    return { ok: false, errore: "Si aggiorna solo per le operazioni in quote ancora aperte." };
+  }
+  const valore = leggiImporto(testo);
+  if (Number.isNaN(valore)) return { ok: false, errore: "Scrivi un importo intero, senza decimali." };
+  if (valore !== null && op.importoDaRaccogliere !== null && valore > op.importoDaRaccogliere) {
+    return { ok: false, errore: "L'importo impegnato supera l'importo da raccogliere." };
+  }
+  if (valore === op.importoImpegnato) return { ok: true };
+  await prisma.$transaction([
+    prisma.clubOperazione.update({ where: { id }, data: { importoImpegnato: valore } }),
+    prisma.clubEvento.create({
+      data: { operazioneId: id, tipo: "operazione-modificata", dati: { userId: utente.id, campi: ["importoImpegnato"] } },
+    }),
+  ]);
+  return { ok: true };
 }
 
 // --- Passaggi di stato ---

@@ -23,6 +23,7 @@ import {
 } from "@/lib/operazioni/definizioni";
 import { cambio, euro, importoIn, intero, leggiCambio, leggiImporto, leggiPercentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
+import { ROLE_LABELS } from "@/lib/roles";
 import type { Errori, InputOperazione } from "@/lib/operazioni/dati";
 import type { OpzioneReferente } from "@/lib/referenti";
 import { cercaCambio, salvaNuovaOperazione, salvaOperazione } from "./azioni";
@@ -60,7 +61,7 @@ function comeDati(v: InputOperazione): OperazioneDati {
     numeroMaxSoci: int("numeroMaxSoci"),
     quotaMinima: imp("quotaMinima"),
     importoDaRaccogliere: imp("importoDaRaccogliere"),
-    importoImpegnato: imp("importoImpegnato"),
+    importoImpegnato: null, // si aggiorna dalla scheda (src/lib/operazioni/dati.ts)
     prezzoAcquisto: imp("prezzoAcquisto"),
     costiLavori: imp("costiLavori"),
     altriCosti: imp("altriCosti"),
@@ -421,9 +422,8 @@ export default function ModuloOperazione({ id, iniziali, referenti, testoLegaleQ
                 {renderNumero("numeroMaxSoci", "Numero massimo di soci *", "es. 8")}
                 {renderImporto("quotaMinima", "Quota minima *")}
                 {renderImporto("importoDaRaccogliere", "Importo da raccogliere")}
-                {renderImporto("importoImpegnato", "Importo già impegnato")}
               </>,
-              "L'importo impegnato per ora si aggiorna a mano.",
+              `L'importo già impegnato si aggiorna dalla scheda dell'operazione (${ROLE_LABELS.Admin} e ${ROLE_LABELS.BackOffice}).`,
             )
           : null}
 

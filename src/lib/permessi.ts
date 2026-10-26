@@ -95,6 +95,12 @@ export function puoScegliereReferente(ruolo: string): boolean {
   return ruolo === "Admin" || ruolo === "BackOffice";
 }
 
+// Contatti di prova (collaudi del portale cliente): li crea solo chi ha questi
+// ruoli; si vedono con le stesse regole degli altri investitori.
+export function puoCreareContattiProva(ruolo: string): boolean {
+  return ruolo === "Admin" || ruolo === "BackOffice";
+}
+
 // Utenti che possono fare da referente: attivi e con accesso al Club.
 export function puoEssereReferente(utente: { role: string; active: boolean }): boolean {
   return utente.active && visibilitaPerRuolo(utente.role) !== "nessuno";
@@ -122,6 +128,11 @@ export function puoModificareOperazione(utente: Pick<UtenteClub, "ruolo">, op: O
 
 export function puoInviareInRevisione(utente: Pick<UtenteClub, "id" | "ruolo">, op: OperazionePerPermessi): boolean {
   return op.stato === "bozza" && (op.creatoDaUserId === utente.id || puoModificareOperazione(utente, op));
+}
+
+// Importo impegnato delle quote (la barra di raccolta che vede il cliente).
+export function puoAggiornareRaccolta(ruolo: string): boolean {
+  return ruolo === "Admin" || ruolo === "BackOffice";
 }
 
 export function puoDecidereOperazioni(ruolo: string): boolean {

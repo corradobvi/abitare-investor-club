@@ -30,6 +30,9 @@ export const CHIAVI_IMPOSTAZIONI = [
   // {operazione} e {link} (la frase con {link} si omette se il cliente non ha
   // un link personale).
   "messaggioPropostaOperazioneWhatsApp",
+  // Cellulare WhatsApp dei referenti, mostrato al cliente nel portale: JSON
+  // { "<id User del CRM>": "+39..." } (vedi cellulareReferente).
+  "cellulariReferenti",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];
@@ -42,6 +45,22 @@ export const URL_INFORMATIVA_PRIVACY_PREDEFINITO = "https://abitare-immobiliare.
 // portaleClienteAttivo = "true"; con qualsiasi altro valore e' "in preparazione".
 export function portaleAttivo(imp: Impostazioni): boolean {
   return imp.portaleClienteAttivo === "true";
+}
+
+// Cellulari dei referenti dall'impostazione cellulariReferenti (vuota o non
+// valida = nessuno).
+export function cellulariReferenti(imp: Impostazioni): Record<string, string> {
+  try {
+    const v = JSON.parse(imp.cellulariReferenti || "{}");
+    if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+    return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === "string" && !!e[1]));
+  } catch {
+    return {};
+  }
+}
+
+export function cellulareReferente(imp: Impostazioni, userId: string | null | undefined): string | null {
+  return userId ? (cellulariReferenti(imp)[userId] ?? null) : null;
 }
 
 // Valori usati quando l'impostazione manca nel database (stessi valori dello
@@ -74,6 +93,7 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "testoAvvertenzaOperazioni",
   "testoLegaleQuote",
   "messaggioPropostaOperazioneWhatsApp",
+  "cellulariReferenti",
 ] as const;
 
 export type ImpostazioneModificabile = (typeof IMPOSTAZIONI_MODIFICABILI)[number];

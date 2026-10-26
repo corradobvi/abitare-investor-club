@@ -74,6 +74,47 @@ model ClubLinkInvito {
   @@index([contattoNuovoId])
 }
 
+// Manifestazione d'interesse (non vincolante) di un investitore per
+// un'operazione, dal portale cliente. Esattamente uno tra clienteId e
+// contattoNuovoId (vincolo CHECK nella migrazione). Una sola manifestazione
+// attiva (nuova | in-contatto) per investitore e operazione: indici unici
+// parziali nella migrazione. Regole in src/lib/operazioni/interessi.ts.
+model ClubManifestazioneInteresse {
+  id                String   @id @default(cuid())
+  operazioneId      String
+  clienteId         String?
+  contattoNuovoId   String?
+  importoIndicativo Int // euro interi, anche per le operazioni in altra valuta
+  nota              String?
+  contattoPreferito String // whatsapp | telefono | email
+  stato             String   @default("nuova") // nuova | in-contatto | chiusa-positiva | chiusa-negativa | ritirata
+  gestitaDaUserId   String? // id User del CRM che ha cambiato lo stato
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  operazione ClubOperazione @relation(fields: [operazioneId], references: [id])
+
+  @@index([operazioneId])
+  @@index([clienteId])
+  @@index([contattoNuovoId])
+}
+
+// Sblocco manuale della scheda completa di un'operazione per un investitore,
+// deciso da un consulente (senza manifestazione d'interesse).
+model ClubSbloccoOperazione {
+  id                String   @id @default(cuid())
+  operazioneId      String
+  clienteId         String?
+  contattoNuovoId   String?
+  sbloccatoDaUserId String // id User del CRM
+  createdAt         DateTime @default(now())
+
+  operazione ClubOperazione @relation(fields: [operazioneId], references: [id])
+
+  @@unique([operazioneId, clienteId])
+  @@unique([operazioneId, contattoNuovoId])
+}
+
 // Disiscrizione dalle proposte di operazioni: un token personale per
 // investitore (link /stop/<token> nel messaggio WhatsApp, solo a portale
 // attivo). disiscrittoIl valorizzato = non riceve piu' proposte: non compare
@@ -97,7 +138,7 @@ model ClubEvento {
   clienteId       String?
   contattoNuovoId String?
   operazioneId    String?
-  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta | proposte-disattivate | proposte-riattivate
+  tipo            String // link-creato | link-revocato | link-aperto | passo-completato | profilo-completato | profilo-modificato-consulente | nuovo-investitore-creato | nuovo-investitore-modificato | nuovo-investitore-confermato | nuovo-investitore-scartato | registrazione-doppione | codice-invito-rigenerato | impostazione-modificata | operazione-creata | operazione-modificata | operazione-inviata-in-revisione | operazione-pubblicata | operazione-raccolta-chiusa | operazione-conclusa | operazione-ritirata | operazione-proposta | proposte-disattivate | proposte-riattivate | contatto-prova-creato | interesse-manifestato | interesse-ritirato | interesse-stato-cambiato | operazione-sbloccata | operazione-vista-anteprima | operazione-vista-dettaglio | documento-scaricato
   dati            Json?
   creatoIl        DateTime @default(now())
 
@@ -169,7 +210,9 @@ model ClubOperazione {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  file ClubOperazioneFile[]
+  file           ClubOperazioneFile[]
+  manifestazioni ClubManifestazioneInteresse[]
+  sblocchi       ClubSbloccoOperazione[]
 
   @@index([stato])
 }
@@ -223,6 +266,10 @@ model ClubContattoNuovo {
   consensoContattoIl DateTime?
   crmClienteId       String?
   importatoIl        DateTime?
+  // Contatto di prova dello staff: escluso da totali, fasi, Novita',
+  // compatibili e statistiche; mai importato nel CRM. Il suo link /c/<token>
+  // funziona per lo staff anche a portale spento (src/lib/portale.ts).
+  prova              Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

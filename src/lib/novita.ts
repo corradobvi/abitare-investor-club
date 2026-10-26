@@ -1,20 +1,26 @@
 // Pannello "Novità" della Home, solo sugli investitori visibili all'utente:
-// profili completati (14 giorni), registrazioni da confermare, aperture del
-// link (7 giorni), registrazioni doppione (14 giorni).
+// manifestazioni d'interesse nuove (prima in elenco), profili completati (14
+// giorni), registrazioni da confermare, aperture del link (7 giorni),
+// registrazioni doppione (14 giorni). I contatti di prova non contano: le
+// loro manifestazioni compaiono col segno PROVA ma fuori dal conteggio.
 import { prisma } from "@/lib/prisma";
 import type { RigaElenco } from "@/lib/investitori";
 import type { UtenteClub } from "@/lib/permessi";
 import { chiaveDiRif, chiaveDiRiga, filtroPerRif, rifDaChiave, type Rif } from "@/lib/riferimento";
 import { data, dataOra } from "@/lib/date";
+import { euro } from "@/lib/numeri";
+import { manifestazioniDiRif } from "@/lib/operazioni/interessi";
 
 export type VoceNovita = {
   chiave: string | null; // scheda da aprire, se visibile
   nome: string;
   quando: string; // data in formato italiano
   dettaglio?: string;
+  prova?: boolean; // contatto di prova: mostrato ma non contato
 };
 
 export type Novita = {
+  manifestazioni: VoceNovita[];
   completati: VoceNovita[];
   daConfermare: VoceNovita[];
   aperture: VoceNovita[];
@@ -34,8 +40,12 @@ function testo(v: unknown): string {
   return typeof v === "string" ? v : "";
 }
 
-export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[]): Promise<Novita> {
+// righeProva: contatti di prova visibili all'utente (solo per le loro
+// manifestazioni, segnate PROVA).
+export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[], righeProva: RigaElenco[] = []): Promise<Novita> {
   const nomi = new Map(righe.map((r) => [r.chiave, r.nomeCompleto]));
+  const nomiProva = new Map(righeProva.map((r) => [r.chiave, r.nomeCompleto]));
+  const rifsConProva = [...righe, ...righeProva].map((r) => rifDaChiave(r.chiave)).filter((r): r is Rif => r !== null);
   const rifs = righe.map((r) => rifDaChiave(r.chiave)).filter((r): r is Rif => r !== null);
   const ora = Date.now();
   const da14 = new Date(ora - 14 * GIORNO);
@@ -45,7 +55,8 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[]): 
     .map((r) => rifDaChiave(r.chiave))
     .flatMap((r) => (r && "contattoNuovoId" in r ? [r.contattoNuovoId] : []));
 
-  const [profili, contatti, aperture, doppioni] = await Promise.all([
+  const [manifestazioni, profili, contatti, aperture, doppioni] = await Promise.all([
+    manifestazioniDiRif(rifsConProva, true),
     rifs.length
       ? prisma.clubProfiloInvestitore.findMany({
           where: { AND: [filtroPerRif(rifs), { completatoIl: { gte: da14 } }] },
@@ -86,7 +97,23 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[]): 
     return utente.visibilita === "tutti" || d.referenteUserId === utente.id;
   });
 
+  const titoli = new Map(
+    (
+      await prisma.clubOperazione.findMany({
+        where: { id: { in: [...new Set(manifestazioni.map((m) => m.operazioneId))] } },
+        select: { id: true, titolo: true },
+      })
+    ).map((o) => [o.id, o.titolo]),
+  );
+
   return {
+    manifestazioni: manifestazioni.slice(0, MASSIMO_PER_VOCE * 2).map((m) => ({
+      chiave: m.chiaveInvestitore,
+      nome: nomi.get(m.chiaveInvestitore) ?? nomiProva.get(m.chiaveInvestitore) ?? "—",
+      quando: dataOra(m.createdAt),
+      dettaglio: `${titoli.get(m.operazioneId) ?? "operazione"} · ${euro(m.importoIndicativo)}`,
+      prova: nomiProva.has(m.chiaveInvestitore),
+    })),
     completati: profili.map((p) => ({
       chiave: chiaveDiRiga(p),
       nome: nomi.get(chiaveDiRiga(p)) ?? "—",

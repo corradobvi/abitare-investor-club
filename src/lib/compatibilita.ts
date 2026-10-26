@@ -31,6 +31,9 @@ export type Compatibilita = {
   parziale: boolean; // profilo incompleto: valutate solo le risposte presenti
   positivi: string[];
   attenzione: string[];
+  // Gli stessi motivi positivi, detti al cliente in linguaggio semplice
+  // (portale cliente, scheda dell'operazione).
+  perCliente: string[];
 };
 
 export const AVVISO_PARZIALE = "Compatibilità parziale: profilo incompleto";
@@ -104,6 +107,11 @@ export function compatibilita(
   const r = risposte ?? {};
   const parziale = !completezzaProfilo(r).completo;
   const positivi: string[] = [];
+  const perCliente: string[] = [];
+  const bene = (interno: string, cliente: string) => {
+    positivi.push(interno);
+    perCliente.push(cliente);
+  };
   const attenzione: string[] = [];
   const esclusioni: string[] = [];
   const rendita = eRendita(op.tipo);
@@ -112,7 +120,7 @@ export function compatibilita(
   // a) tipo
   if (obiettivo) {
     const ok = rendita ? obiettivo === "rendita" || obiettivo === "entrambi" : obiettivo === "flipping" || obiettivo === "entrambi";
-    if (ok) positivi.push(rendita ? "Cerca una rendita" : "Cerca operazioni di flipping");
+    if (ok) bene(rendita ? "Cerca una rendita" : "Cerca operazioni di flipping", "In linea con il tuo obiettivo");
     else esclusioni.push(rendita ? "Non cerca una rendita (obiettivo: solo flipping)" : "Non cerca flipping (obiettivo: solo rendita)");
   }
 
@@ -121,7 +129,7 @@ export function compatibilita(
   if (area) {
     const italia = inItalia(op.paese);
     const ok = area === "entrambi" || (italia ? area === "italia" : area === "estero");
-    if (ok) positivi.push(italia ? "Investe in Italia" : "Investe all'estero");
+    if (ok) bene(italia ? "Investe in Italia" : "Investe all'estero", "Nell'area in cui vuoi investire");
     else esclusioni.push(italia ? "Vuole investire solo all'estero" : "Vuole investire solo in Italia");
   }
 
@@ -130,19 +138,19 @@ export function compatibilita(
   const ticket = ticketMinimoEuro(op);
   if (capitale && ticket !== null && capitale in MASSIMO_CAPITALE) {
     const fascia = etichettaRisposta("capitale", capitale);
-    if (MASSIMO_CAPITALE[capitale] >= ticket) positivi.push(`Capitale ${fascia}, ticket minimo ${euro(ticket)}`);
+    if (MASSIMO_CAPITALE[capitale] >= ticket) bene(`Capitale ${fascia}, ticket minimo ${euro(ticket)}`, "In linea con il tuo capitale");
     else esclusioni.push(`Capitale ${fascia}, sotto il ticket minimo di ${euro(ticket)}`);
   }
 
   // d) formula (solo flipping: la domanda riguarda il flipping)
   const formula = testo(r.formulaFlipping);
   if (!rendita && (formula === "intera" || formula === "quota")) {
-    if (formula === op.formula) positivi.push(formula === "quota" ? "Preferisce le quote" : "Preferisce operazioni intere");
+    if (formula === op.formula) bene(formula === "quota" ? "Preferisce le quote" : "Preferisce operazioni intere", "Con la formula che preferisci");
     else esclusioni.push(formula === "intera" ? "Vuole solo operazioni intere, questa è in quote" : "Vuole solo quote, questa è un'operazione intera");
   }
 
   if (esclusioni.length > 0) {
-    return { compatibile: false, punteggio: 0, parziale, positivi, attenzione: esclusioni };
+    return { compatibile: false, punteggio: 0, parziale, positivi, attenzione: esclusioni, perCliente };
   }
 
   let punteggio = 100;
@@ -157,7 +165,10 @@ export function compatibilita(
       punteggio -= PENALITA.rendimento;
       attenzione.push(`Rendimento base stimato ${percentuale(op.rendimentoBase)}, sotto la fascia desiderata (${fascia})`);
     } else {
-      positivi.push(`Rendimento base stimato ${percentuale(op.rendimentoBase)}, in linea con la fascia desiderata (${fascia})`);
+      bene(
+        `Rendimento base stimato ${percentuale(op.rendimentoBase)}, in linea con la fascia desiderata (${fascia})`,
+        "Rendimento stimato in linea con le tue attese",
+      );
     }
   }
 
@@ -171,7 +182,7 @@ export function compatibilita(
       punteggio -= PENALITA.durata;
       attenzione.push(`Durata stimata ${op.durataStimataMesi} mesi, oltre l'orizzonte scelto (${scelta})`);
     } else {
-      positivi.push(`Durata stimata ${op.durataStimataMesi} mesi, entro l'orizzonte scelto (${scelta})`);
+      bene(`Durata stimata ${op.durataStimataMesi} mesi, entro l'orizzonte scelto (${scelta})`, "Durata in linea con i tuoi tempi");
     }
   }
 
@@ -183,7 +194,7 @@ export function compatibilita(
       punteggio -= PENALITA.tipoRendita;
       attenzione.push(`Preferisce l'${tipoRendita === "lungo-periodo" ? "affitto di lungo periodo" : "affitto breve"}`);
     } else {
-      positivi.push("Tipo di affitto preferito");
+      bene("Tipo di affitto preferito", "Il tipo di affitto che preferisci");
     }
   }
 
@@ -193,7 +204,7 @@ export function compatibilita(
     punteggio -= PENALITA.finanziamento;
     attenzione.push("Gli serve un finanziamento, ma l'operazione non è finanziabile");
   } else if ((finanziamento === "necessario" || finanziamento === "possibile") && op.finanziabile) {
-    positivi.push("Operazione finanziabile");
+    bene("Operazione finanziabile", "Si può finanziare con un mutuo o un prestito");
   }
 
   // Capitale disponibile dopo la scadenza della raccolta.
@@ -213,12 +224,12 @@ export function compatibilita(
 
   // Golden Visa: conta solo se il cliente ha detto di essere interessato.
   if (r.interesseGoldenVisa === true && !inItalia(op.paese) && op.goldenVisa !== null) {
-    if (op.goldenVisa) positivi.push("Dà accesso alla Golden Visa");
+    if (op.goldenVisa) bene("Dà accesso alla Golden Visa", "Dà accesso alla Golden Visa");
     else attenzione.push("Interessato alla Golden Visa, ma questa operazione non la prevede");
   }
 
   if (parziale) attenzione.unshift(AVVISO_PARZIALE);
-  return { compatibile: true, punteggio: Math.max(0, Math.min(100, punteggio)), parziale, positivi, attenzione };
+  return { compatibile: true, punteggio: Math.max(0, Math.min(100, punteggio)), parziale, positivi, attenzione, perCliente };
 }
 
 // Profilo da considerare: almeno una risposta (i profili vuoti non si valutano).

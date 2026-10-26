@@ -162,3 +162,17 @@ a { color: inherit; }
 .scenario { border: 1px solid var(--sand); border-radius: 10px; padding: 12px; text-align: center; background: #fff; }
 .scenario.base { border-color: var(--navy); background: var(--off-white); }
 .testo-lungo { white-space: pre-wrap; line-height: 1.6; font-size: 15px; overflow-wrap: anywhere; }
+
+/* Area del cliente (/c/<token> con profilo completo) e schede delle operazioni. */
+.area-schede { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; background: #fff; border: 1px solid var(--sand); border-radius: 12px; padding: 4px; }
+.area-schede button {
+  min-height: 44px; border: none; border-radius: 9px; background: transparent; font: inherit; font-size: 14px;
+  font-weight: 600; color: var(--navy); cursor: pointer;
+}
+.area-schede button.attiva { background: var(--navy); color: #fff; }
+.motivi { list-style: none; display: grid; gap: 4px; font-size: 13px; color: #3d5a3d; }
+.riga-profilo { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; text-decoration: none; color: var(--navy); }
+.riga-profilo > span:last-child { text-align: right; }
+.barra-raccolta { height: 10px; border-radius: 999px; background: var(--off-white); border: 1px solid var(--sand); overflow: hidden; }
+.barra-raccolta span { display: block; height: 100%; background: var(--navy); }
+.dati-cliente { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }

@@ -22,6 +22,7 @@ export type Investitore = {
   chiave: string;
   nuovo: boolean;
   daConfermare: boolean; // nuovo registrato da solo col link di un consulente
+  prova: boolean; // contatto di prova dello staff (escluso da totali e conteggi)
   nome: string | null;
   cognome: string | null;
   cellulare: string | null;
@@ -42,6 +43,7 @@ function daClienteCrm(c: ClienteInvestitore): Investitore {
     chiave: chiaveDiRif(rif),
     nuovo: false,
     daConfermare: false,
+    prova: false,
     nome: c.nome,
     cognome: c.cognome,
     cellulare: c.cellulare,
@@ -65,6 +67,7 @@ async function daContattiNuovi(contatti: ClubContattoNuovo[]): Promise<Investito
       chiave: chiaveDiRif(rif),
       nuovo: true,
       daConfermare: c.stato === "da-confermare",
+      prova: c.prova,
       nome: c.nome,
       cognome: c.cognome,
       cellulare: c.cellulare,
@@ -99,6 +102,7 @@ export type RigaElenco = {
   chiave: string;
   nuovo: boolean;
   daConfermare: boolean;
+  prova: boolean;
   nomeCompleto: string;
   stato: string | null;
   referente: ReferenteMostrato;
@@ -137,6 +141,7 @@ function rigaElenco(
     chiave: c.chiave,
     nuovo: c.nuovo,
     daConfermare: c.daConfermare,
+    prova: c.prova,
     nomeCompleto: nomeCompleto(c),
     stato: c.stato,
     referente,
@@ -168,8 +173,19 @@ async function investitoriCompleti(utente: UtenteClub) {
   }));
 }
 
+// Elenco della Home, senza i contatti di prova: sono loro a fare totali,
+// sequenza di lavoro e Novita'.
 export async function elencoPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
-  return (await investitoriCompleti(utente)).map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
+  return (await investitoriCompleti(utente))
+    .filter((x) => !x.investitore.prova)
+    .map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
+}
+
+// Contatti di prova visibili all'utente, per il loro riquadro in Home.
+export async function contattiProvaPerUtente(utente: UtenteClub): Promise<RigaElenco[]> {
+  return (await investitoriCompleti(utente))
+    .filter((x) => x.investitore.prova)
+    .map((x) => rigaElenco(x.investitore, x.referente, x.profilo, x.link));
 }
 
 // Investitore da valutare per le operazioni (sezione "Investitori compatibili").

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { puoCreareOperazioni, utenteConAccesso } from "@/lib/permessi";
 import { copertina, operazioniPerUtente } from "@/lib/operazioni/dati";
 import { conteggiCompatibili } from "@/lib/operazioni/compatibili";
+import { conteggiManifestazioniAttive } from "@/lib/operazioni/interessi";
 import ElencoOperazioni, { type SchedaElenco } from "./ElencoOperazioni";
 
 export const dynamic = "force-dynamic";
@@ -9,11 +10,15 @@ export const dynamic = "force-dynamic";
 export default async function OperazioniPage() {
   const utente = await utenteConAccesso();
   const operazioni = await operazioniPerUtente(utente);
-  const conteggi = await conteggiCompatibili(utente, operazioni.map((x) => x.op));
+  const [conteggi, interessi] = await Promise.all([
+    conteggiCompatibili(utente, operazioni.map((x) => x.op)),
+    conteggiManifestazioniAttive(operazioni.map((x) => x.op.id)),
+  ]);
   const schede: SchedaElenco[] = operazioni.map(({ op, file }) => ({
     op,
     copertinaId: copertina(file)?.id ?? null,
     compatibili: conteggi.get(op.id) ?? { compatibili: 0, possibili: 0 },
+    manifestazioni: interessi.get(op.id) ?? 0,
   }));
 
   return (

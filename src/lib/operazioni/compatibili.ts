@@ -26,6 +26,10 @@ export type InvestitoreCompatibile = Compatibilita & {
 export type InvestitoriCompatibili = {
   compatibili: InvestitoreCompatibile[]; // profilo completo
   possibili: InvestitoreCompatibile[]; // profilo incompleto: compatibilita' parziale
+  prova: InvestitoreCompatibile[]; // contatti di prova, in una riga a parte
+  // Tutti gli investitori visibili all'utente (anche non compatibili), per i
+  // nomi nelle manifestazioni d'interesse.
+  visibili: Map<string, { nomeCompleto: string; prova: boolean }>;
 };
 
 function perPunteggio(a: { punteggio: number; nomeCompleto: string }, b: { punteggio: number; nomeCompleto: string }) {
@@ -42,15 +46,17 @@ function messaggioWhatsapp(i: InvestitoreConProfilo, op: OperazioneDati, imp: Im
   return linkWhatsapp(numero, componiMessaggioProposta(modello, i.nome, op.titolo, link, stop));
 }
 
-// Compatibili con l'operazione, senza i disiscritti. Il link WhatsApp si
-// compone dopo (serve solo nella scheda operazione).
+// Compatibili con l'operazione, senza i disiscritti; i contatti di prova a
+// parte (non contano mai). Il link WhatsApp si compone dopo (serve solo nella
+// scheda operazione).
 function dividi(investitori: InvestitoreConProfilo[], op: OperazioneDati, esclusi: Set<string>) {
-  const risultato = { compatibili: [] as Valutato[], possibili: [] as Valutato[] };
+  const risultato = { compatibili: [] as Valutato[], possibili: [] as Valutato[], prova: [] as Valutato[] };
   for (const i of investitori) {
     if (esclusi.has(i.chiave) || !profiloValutabile(i.risposte)) continue;
     const c = compatibilita(i.risposte, op);
     if (!c.compatibile) continue;
-    (c.parziale ? risultato.possibili : risultato.compatibili).push({ investitore: i, compatibilita: c });
+    const lista = i.prova ? risultato.prova : c.parziale ? risultato.possibili : risultato.compatibili;
+    lista.push({ investitore: i, compatibilita: c });
   }
   return risultato;
 }
@@ -82,6 +88,8 @@ export async function investitoriCompatibili(utente: UtenteClub, op: OperazioneD
   return {
     compatibili: diviso.compatibili.map(voce).sort(perPunteggio),
     possibili: diviso.possibili.map(voce).sort(perPunteggio),
+    prova: diviso.prova.map(voce).sort(perPunteggio),
+    visibili: new Map(investitori.map((i) => [i.chiave, { nomeCompleto: i.nomeCompleto, prova: i.prova }])),
   };
 }
 

@@ -18,6 +18,7 @@ export type SchedaElenco = {
   op: OperazioneDati;
   copertinaId: string | null;
   compatibili: { compatibili: number; possibili: number };
+  manifestazioni: number; // attive, senza i contatti di prova
 };
 
 type Filtri = { stato: string; tipo: string; partner: string; formula: string; paese: string };
@@ -59,7 +60,7 @@ function luogo(op: OperazioneDati): string {
   return [op.zona, op.citta, op.paese].filter((s) => s?.trim()).join(", ");
 }
 
-function renderScheda({ op, copertinaId, compatibili }: SchedaElenco) {
+function renderScheda({ op, copertinaId, compatibili, manifestazioni }: SchedaElenco) {
   const stato = statoMostrato(op.stato);
   const partner = op.partner === "altro" && op.partnerAltro ? op.partnerAltro : etichetta(PARTNER, op.partner);
   return (
@@ -92,6 +93,13 @@ function renderScheda({ op, copertinaId, compatibili }: SchedaElenco) {
         <div style={{ fontSize: 13, borderTop: "1px solid var(--off-white)", paddingTop: 8 }}>
           <strong>{compatibili.compatibili}</strong> investitori compatibili
           {compatibili.possibili > 0 ? <span className="tenue"> · {compatibili.possibili} con profilo incompleto</span> : null}
+          {manifestazioni > 0 ? (
+            <div style={{ marginTop: 4 }}>
+              <span className="badge ok">
+                {manifestazioni} {manifestazioni === 1 ? "manifestazione d'interesse attiva" : "manifestazioni d'interesse attive"}
+              </span>
+            </div>
+          ) : null}
         </div>
       </div>
     </Link>

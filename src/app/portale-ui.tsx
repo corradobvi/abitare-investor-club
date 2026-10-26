@@ -44,3 +44,5 @@ export const TESTO_LINK_NON_VALIDO = {
   titolo: "Link non valido",
   testo: "Questo link non è più attivo. Contatta il tuo consulente AbitaRE: ti invierà un link nuovo.",
 };
+
+export const TESTO_FASCIA_PROVA = "Contatto di prova: le risposte e le manifestazioni si salvano, ma non contano";

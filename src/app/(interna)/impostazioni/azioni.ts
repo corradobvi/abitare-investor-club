@@ -5,6 +5,8 @@ import { puoEssereReferente, utenteImpostazioni } from "@/lib/permessi";
 import { salvaImpostazione } from "@/lib/impostazioni";
 import { haSegnapostoLink } from "@/lib/messaggio-invito";
 import { utentiPerId } from "@/lib/crm/lettura";
+import { opzioniReferente } from "@/lib/referenti";
+import { cellulareDaSalvare } from "@/lib/telefono";
 
 type Esito = { ok: true } | { ok: false; errore: string };
 
@@ -83,5 +85,23 @@ export async function salvaMessaggioProposta(testo: string): Promise<Esito> {
   if (!valore.includes("{operazione}")) return { ok: false, errore: "Manca il segnaposto {operazione}: il cliente non saprebbe di quale operazione si parla." };
   await salvaImpostazione("messaggioPropostaOperazioneWhatsApp", valore, utente.id);
   revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// Cellulari WhatsApp dei referenti (portale cliente: "Scrivi al tuo
+// referente"). Solo utenti attivi con accesso al Club; vuoto = nessuno.
+export async function salvaCellulariReferenti(valori: Record<string, string>): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  if (!valori || typeof valori !== "object") return { ok: false, errore: "Dati non validi." };
+  const ammessi = new Set((await opzioniReferente(null)).map((o) => o.valore));
+  const puliti: Record<string, string> = {};
+  for (const [id, testo] of Object.entries(valori)) {
+    if (!ammessi.has(id) || typeof testo !== "string" || !testo.trim()) continue;
+    const cellulare = cellulareDaSalvare(testo);
+    if (!cellulare) return { ok: false, errore: `Il numero "${testo.trim().slice(0, 30)}" non è valido.` };
+    puliti[id] = cellulare;
+  }
+  await salvaImpostazione("cellulariReferenti", JSON.stringify(puliti), utente.id);
+  revalidatePath("/impostazioni");
   return { ok: true };
 }

@@ -8,7 +8,7 @@ import type { ClubContattoNuovo, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { leggiImpostazioni, type Impostazioni } from "@/lib/impostazioni";
 import { clientiPerContatto, utentiPerId, type ClienteTrovato, type UtenteCrm } from "@/lib/crm/lettura";
-import { puoEssereReferente, puoScegliereReferente, puoVedereCliente, type UtenteClub } from "@/lib/permessi";
+import { puoCreareContattiProva, puoEssereReferente, puoScegliereReferente, puoVedereCliente, type UtenteClub } from "@/lib/permessi";
 import { cellulareDaSalvare, normalizzaTelefono } from "@/lib/telefono";
 import { chiaveDiRif } from "@/lib/riferimento";
 
@@ -108,7 +108,7 @@ export async function trovaCorrispondenza(
   if (nelCrm.length > 0) return { tipo: "crm", clienti: nelCrm };
   const tel = normalizzaTelefono(contatto.cellulare);
   const candidati = await prisma.clubContattoNuovo.findMany({
-    where: { stato: { not: "importato" }, ...(escludiContattoId ? { id: { not: escludiContattoId } } : {}) },
+    where: { stato: { not: "importato" }, prova: false, ...(escludiContattoId ? { id: { not: escludiContattoId } } : {}) },
   });
   const inLista = candidati.find(
     (c) => normalizzaTelefono(c.cellulare) === tel || (!!contatto.email && c.email === contatto.email),
@@ -217,6 +217,38 @@ export async function creaNuovoInvestitore(inviati: DatiInviati, utente: UtenteC
   return { ok: true, chiave: chiaveDiRif({ contattoNuovoId: contatto.id }) };
 }
 
+// ---------------------------------------------------------------------------
+// Contatti di prova dello staff (ClubContattoNuovo.prova)
+
+// Cellulare dei contatti di prova: senza cifre, quindi niente WhatsApp
+// (numeroWhatsapp -> null) e nessun doppione possibile.
+export const CELLULARE_PROVA = "PROVA";
+
+// Contatto di prova "Prova <cognome>", con il link personale gia' creato:
+// referente e' chi lo crea. Non passa dal controllo doppioni e non sara'
+// mai importato nel CRM.
+export async function creaContattoProva(utente: UtenteClub, cognome: unknown): Promise<EsitoNuovo> {
+  if (!puoCreareContattiProva(utente.ruolo)) return { ok: false, errore: "Il tuo ruolo non può creare contatti di prova." };
+  const c = await prisma.$transaction(async (tx) => {
+    const creato = await tx.clubContattoNuovo.create({
+      data: {
+        nome: "Prova",
+        cognome: testo(cognome, 60),
+        cellulare: CELLULARE_PROVA,
+        referenteUserId: utente.id,
+        creatoDaUserId: utente.id,
+        stato: "confermato",
+        prova: true,
+      },
+    });
+    await tx.clubEvento.create({ data: { contattoNuovoId: creato.id, tipo: "contatto-prova-creato", dati: { userId: utente.id } } });
+    await tx.clubLinkInvito.create({ data: { token: nuovoToken(), contattoNuovoId: creato.id, creatoDaUserId: utente.id } });
+    await tx.clubEvento.create({ data: { contattoNuovoId: creato.id, tipo: "link-creato", dati: { userId: utente.id } } });
+    return creato;
+  });
+  return { ok: true, chiave: chiaveDiRif({ contattoNuovoId: c.id }) };
+}
+
 // Modifica dei dati di un nuovo investitore dalla sua scheda. Il referente
 // cambia solo se l'utente puo' sceglierlo (Admin, BackOffice).
 export async function modificaContattoNuovo(
@@ -224,6 +256,7 @@ export async function modificaContattoNuovo(
   inviati: DatiInviati,
   utente: UtenteClub,
 ): Promise<EsitoNuovo> {
+  if (contatto.prova) return { ok: false, errore: "I contatti di prova non si modificano." };
   const imp = await leggiImpostazioni();
   const p = pulisci(inviati);
   if (!p.ok) return p;

@@ -9,7 +9,8 @@
 //
 // Ogni agente consegna il risultato chiamando uno strumento "consegna" con
 // uno schema rigido (strict): cosi' i dati arrivano sempre nella forma
-// attesa. Puo' usare anche la ricerca web di Anthropic (server tool).
+// attesa. Puo' usare anche la ricerca web e la lettura di pagine di Anthropic
+// (server tool).
 // L'AI prepara solo bozze e suggerimenti: decide sempre una persona.
 import Anthropic from "@anthropic-ai/sdk";
 import { Prisma } from "@prisma/client";
@@ -107,6 +108,19 @@ export class ErroreAgente extends Error {}
 
 export type Consegna = { name: string; description: string; schema: Record<string, unknown> };
 
+// File allegato alla richiesta (pdf o immagine), gia' verificato.
+export type AllegatoAi = {
+  nome: string;
+  mediaType: "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
+  base64: string;
+};
+
+function bloccoAllegato(a: AllegatoAi): Anthropic.Beta.BetaContentBlockParam {
+  return a.mediaType === "application/pdf"
+    ? { type: "document", title: a.nome, source: { type: "base64", media_type: a.mediaType, data: a.base64 } }
+    : { type: "image", source: { type: "base64", media_type: a.mediaType, data: a.base64 } };
+}
+
 export type LavoroAgente = {
   agente: Agente;
   azione: string;
@@ -115,6 +129,8 @@ export type LavoroAgente = {
   messaggio: string;
   consegna: Consegna;
   ricercheWebMassime: number; // 0 = niente ricerca web
+  lettureWebMassime?: number; // pagine indicate dallo staff da leggere (web fetch); 0 o assente = nessuna
+  allegati?: AllegatoAi[]; // file da leggere, prima del messaggio
   effort: "low" | "medium" | "high";
   dati?: Prisma.InputJsonObject;
 };
@@ -145,7 +161,12 @@ export async function eseguiLavoro(l: LavoroAgente): Promise<{ risultato: Record
     },
   ];
   if (l.ricercheWebMassime > 0) tools.push({ type: "web_search_20260209", name: "web_search", max_uses: l.ricercheWebMassime });
-  const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: "user", content: l.messaggio }];
+  // La lettura di pagine (web fetch) apre solo indirizzi gia' presenti nella
+  // richiesta: le fonti di ispirazione date dallo staff.
+  if (l.lettureWebMassime) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: l.lettureWebMassime, max_content_tokens: 20000 });
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    { role: "user", content: [...(l.allegati ?? []).map(bloccoAllegato), { type: "text", text: l.messaggio }] },
+  ];
 
   let risultato: Record<string, unknown> | null = null;
   let esito: "ok" | "errore" | "rifiutata" = "errore";

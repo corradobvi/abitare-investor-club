@@ -3,9 +3,12 @@
 // motivo e le fonti), "Scrivi la bozza" / "Scarta", e bozza su un tema scelto
 // dallo staff. Le bozze si aprono nell'editor: la pubblicazione resta allo
 // staff. I lavori durano da qualche decina di secondi a un paio di minuti.
+// Le fonti di ispirazione (link e file facoltativi) valgono per il lavoro
+// lanciato subito dopo.
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PropostaMostrata } from "@/lib/ai/redattore";
+import { ACCEPT_FILE_ISPIRAZIONE, BYTE_FILE_ISPIRAZIONE, MASSIMO_FILE_ISPIRAZIONE, MASSIMO_FONTI_ISPIRAZIONE } from "@/lib/ai/fonti";
 import { ARGOMENTI, LIVELLI } from "@/lib/contenuti/definizioni";
 import { etichetta } from "@/lib/operazioni/definizioni";
 import { data } from "@/lib/date";
@@ -27,6 +30,25 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
   const [tema, setTema] = useState("");
   const [tipo, setTipo] = useState("formazione");
   const [livello, setLivello] = useState("base");
+  const [fonti, setFonti] = useState("");
+  const [file, setFile] = useState<File[]>([]);
+  const [versioneFile, setVersioneFile] = useState(0); // per svuotare il campo file
+
+  function formFile(): FormData {
+    const fd = new FormData();
+    for (const f of file) fd.append("file", f);
+    return fd;
+  }
+
+  function scegliFile(scelti: File[]) {
+    setMessaggio(null);
+    if (scelti.length > MASSIMO_FILE_ISPIRAZIONE || scelti.reduce((t, f) => t + f.size, 0) > BYTE_FILE_ISPIRAZIONE) {
+      setFile([]);
+      setVersioneFile((v) => v + 1);
+      return setMessaggio({ tipo: "errore", testo: `Al massimo ${MASSIMO_FILE_ISPIRAZIONE} file e 20 MB in tutto.` });
+    }
+    setFile(scelti);
+  }
 
   function esegui(descrizione: string, fn: () => Promise<{ ok: true; id?: string; nuove?: number } | { ok: false; errore: string }>) {
     setMessaggio(null);
@@ -36,6 +58,10 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
       setLavoro(null);
       if (!esito) return setMessaggio({ tipo: "errore", testo: "Il lavoro non è andato a buon fine. Riprova." });
       if (!esito.ok) return setMessaggio({ tipo: "errore", testo: esito.errore });
+      // Le fonti valevano per questo lavoro: si svuotano.
+      setFonti("");
+      setFile([]);
+      setVersioneFile((v) => v + 1);
       if (esito.id) return router.push(`/contenuti/${esito.id}/modifica`);
       setMessaggio({ tipo: "ok", testo: esito.nuove ? `${esito.nuove} nuove proposte.` : "Nessuna nuova proposta." });
       router.refresh();
@@ -59,9 +85,41 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
             bozze. Le bozze vanno sempre rilette: la pubblicazione resta a voi.
           </p>
         </div>
-        <button type="button" className="pulsante" disabled={inCorso || !!nonDisponibile} onClick={() => esegui("Sto cercando temi…", chiediProposte)}>
+        <button type="button" className="pulsante" disabled={inCorso || !!nonDisponibile} onClick={() => esegui("Sto cercando temi…", () => chiediProposte(fonti, formFile()))}>
           Proponi temi
         </button>
+      </div>
+
+      <div>
+        <label className="etichetta" htmlFor="fonti-ispirazione">
+          Fonti di ispirazione (facoltative): incolla fino a {MASSIMO_FONTI_ISPIRAZIONE} link, uno per riga
+        </label>
+        <textarea
+          id="fonti-ispirazione"
+          className="campo"
+          rows={2}
+          value={fonti}
+          onChange={(e) => setFonti(e.target.value)}
+          placeholder="https://…"
+          style={{ fontSize: 13 }}
+        />
+        <label className="etichetta" htmlFor="file-ispirazione" style={{ marginTop: 8 }}>
+          …e/o allega fino a {MASSIMO_FILE_ISPIRAZIONE} file (pdf o foto jpg, png, webp; 20 MB in tutto)
+        </label>
+        <input
+          key={versioneFile}
+          id="file-ispirazione"
+          type="file"
+          multiple
+          accept={ACCEPT_FILE_ISPIRAZIONE}
+          disabled={inCorso}
+          onChange={(e) => scegliFile(Array.from(e.target.files ?? []))}
+          style={{ fontSize: 13 }}
+        />
+        <p className="tenue" style={{ fontSize: 12, marginTop: 4 }}>
+          Valgono per il prossimo lavoro che lanci: proposte di temi o bozza. Il redattore le legge e ne prende spunto; i
+          link li cita tra le fonti. I file servono solo per quel lavoro e non vengono conservati.
+        </p>
       </div>
 
       {nonDisponibile ? <p className="avvertenza" style={{ fontSize: 13, whiteSpace: "normal" }}>{nonDisponibile}</p> : null}
@@ -103,7 +161,7 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
                   type="button"
                   className="pulsante"
                   disabled={inCorso || !!nonDisponibile}
-                  onClick={() => esegui(`Sto scrivendo "${p.titolo}"…`, () => scriviDaProposta(p.id))}
+                  onClick={() => esegui(`Sto scrivendo "${p.titolo}"…`, () => scriviDaProposta(p.id, fonti, formFile()))}
                 >
                   Scrivi la bozza
                 </button>
@@ -144,7 +202,7 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
             type="button"
             className="pulsante secondario"
             disabled={inCorso || !!nonDisponibile || tema.trim().length < 5}
-            onClick={() => esegui("Sto scrivendo la bozza…", () => scriviDaTema(tema, tipo, livello))}
+            onClick={() => esegui("Sto scrivendo la bozza…", () => scriviDaTema(tema, tipo, livello, fonti, formFile()))}
           >
             Scrivi la bozza
           </button>

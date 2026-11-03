@@ -44,6 +44,9 @@ export async function registrati(codice: unknown, dati: DatiRegistrazione): Prom
 
   const c = codice === null ? null : await codiceValido(codice);
   if (codice !== null && !c) return { ok: false, errore: "Questo link non è più attivo." };
+  // L'email e' obbligatoria per chi si registra da solo (nel modulo interno
+  // dello staff resta facoltativa); la validita' la controlla pulisci.
+  if (typeof dati.email !== "string" || !dati.email.trim()) return { ok: false, errore: "L'email è obbligatoria." };
   if (dati.consenso !== true) return { ok: false, errore: "Per continuare serve il consenso a essere contattato." };
 
   if (anteprima) {

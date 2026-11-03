@@ -25,6 +25,10 @@ export default function ModuloRegistrazione({ codice, urlInformativa, anteprima 
   async function invia(e: React.FormEvent) {
     e.preventDefault();
     if (inCorso) return;
+    if (!valori.email.trim()) {
+      setErrore("L'email è obbligatoria.");
+      return;
+    }
     if (!consenso) {
       setErrore("Per continuare serve il consenso a essere contattato.");
       return;
@@ -70,7 +74,7 @@ export default function ModuloRegistrazione({ codice, urlInformativa, anteprima 
       {renderCampo("nome", "Nome", { autoComplete: "given-name", required: true, maxLength: 100 })}
       {renderCampo("cognome", "Cognome", { autoComplete: "family-name", required: true, maxLength: 100 })}
       {renderCampo("cellulare", "Cellulare", { type: "tel", inputMode: "tel", autoComplete: "tel", required: true, maxLength: 40 })}
-      {renderCampo("email", "Email (facoltativa)", { type: "email", inputMode: "email", autoComplete: "email", maxLength: 200 })}
+      {renderCampo("email", "Email", { type: "email", inputMode: "email", autoComplete: "email", required: true, maxLength: 200 })}
       {/* Campo trappola: invisibile alle persone, lo compilano solo i programmi automatici. */}
       <div className="trappola" aria-hidden="true">
         <label htmlFor="campo-sito">Sito web</label>

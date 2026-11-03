@@ -41,6 +41,10 @@ export const CHIAVI_IMPOSTAZIONI = [
   "testoAvvertenzaCaseStudy",
   // Messaggio WhatsApp per condividere un contenuto: {nome}, {titolo}, {link}.
   "messaggioCondivisioneContenutoWhatsApp",
+  // Agenti AI (src/lib/ai/): interruttore del redattore ("true" = acceso,
+  // altrimenti spento) e tetto di spesa mensile in euro per tutti gli agenti.
+  "agenteRedattoreAttivo",
+  "tettoSpesaAiMensileEuro",
 ] as const;
 
 export type ChiaveImpostazione = (typeof CHIAVI_IMPOSTAZIONI)[number];
@@ -53,6 +57,14 @@ export const URL_INFORMATIVA_PRIVACY_PREDEFINITO = "https://abitare-immobiliare.
 // portaleClienteAttivo = "true"; con qualsiasi altro valore e' "in preparazione".
 export function portaleAttivo(imp: Impostazioni): boolean {
   return imp.portaleClienteAttivo === "true";
+}
+
+// Tetto di spesa mensile degli agenti AI, in euro (vuoto o non valido = 20).
+export const TETTO_SPESA_AI_PREDEFINITO = 20;
+
+export function tettoSpesaAi(imp: Impostazioni): number {
+  const n = Number((imp.tettoSpesaAiMensileEuro ?? "").replace(",", "."));
+  return Number.isFinite(n) && n >= 0 ? n : TETTO_SPESA_AI_PREDEFINITO;
 }
 
 // Cellulari dei referenti dall'impostazione cellulariReferenti (vuota o non
@@ -108,6 +120,8 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "testoAvvertenzaSimulatore",
   "testoAvvertenzaCaseStudy",
   "messaggioCondivisioneContenutoWhatsApp",
+  "agenteRedattoreAttivo",
+  "tettoSpesaAiMensileEuro",
 ] as const;
 
 export type ImpostazioneModificabile = (typeof IMPOSTAZIONI_MODIFICABILI)[number];

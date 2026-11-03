@@ -12,6 +12,7 @@
     "db:impostazioni": "node --env-file=.env prisma/impostazioni-iniziali.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.4.0",
     "@prisma/client": "~6.19.3",
     "aws4fetch": "1.0.20",
     "bcryptjs": "^2.4.3",

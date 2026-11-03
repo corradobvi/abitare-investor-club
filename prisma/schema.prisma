@@ -403,3 +403,50 @@ model ClubTentativoAccesso {
   @@index([chiave, creatoIl])
   @@index([creatoIl])
 }
+
+// Registro delle chiamate agli agenti AI (src/lib/ai/motore.ts): una riga per
+// ogni lavoro chiesto a un agente, con consumi e costo. Serve al tetto di
+// spesa mensile (tettoSpesaAiMensileEuro) e alla pagina Impostazioni. Non
+// contiene i testi inviati o ricevuti.
+model ClubChiamataAI {
+  id               String   @id @default(cuid())
+  agente           String // redattore (in futuro: analista | copilota | assistente)
+  azione           String // es. proponi-temi | scrivi-bozza
+  userId           String? // id User del CRM che l'ha chiesta
+  modello          String // modello che ha risposto
+  inputTokens      Int      @default(0)
+  outputTokens     Int      @default(0)
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  ricercheWeb      Int      @default(0)
+  costoUsd         Decimal  @default(0) @db.Decimal(10, 4) // prezzi di listino Anthropic
+  costoEuro        Decimal  @default(0) @db.Decimal(10, 4) // al cambio BCE del giorno
+  esito            String // ok | errore | rifiutata
+  errore           String? // motivo breve, senza dati personali
+  durataMs         Int      @default(0)
+  dati             Json? // riferimenti (es. contenutoId, propostaId)
+  createdAt        DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([agente, createdAt])
+}
+
+// Temi proposti dal redattore AI per l'area informativa: lo staff ne sceglie
+// uno e il redattore ne scrive la bozza (ClubContenuto in stato bozza).
+model ClubPropostaTema {
+  id          String   @id @default(cuid())
+  titolo      String
+  tipo        String // formazione | news
+  livello     String? // base | intermedio | avanzato (solo formazione)
+  argomenti   String[]
+  motivo      String // manca | letto | online
+  spiegazione String // perche' conviene scriverlo
+  fonti       Json // [{ titolo, url }] per i temi nati da notizie online
+  stato       String   @default("proposta") // proposta | scritta | scartata
+  contenutoId String? // bozza scritta da questa proposta
+  chiamataId  String? // ClubChiamataAI che l'ha proposta
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([stato, createdAt])
+}

@@ -2,6 +2,9 @@ import Link from "next/link";
 import { puoScrivereContenuti, utenteConAccesso } from "@/lib/permessi";
 import { contenutiPerUtente } from "@/lib/contenuti/dati";
 import ElencoContenuti from "./ElencoContenuti";
+import RedattoreAi from "./RedattoreAi";
+import { proposteAperte } from "@/lib/ai/redattore";
+import { motivoNonDisponibile } from "@/lib/ai/motore";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +28,9 @@ export default async function ContenutiPage() {
         ) : null}
       </div>
       <div style={{ height: 20 }} />
+      {puoScrivereContenuti(utente.ruolo) ? (
+        <RedattoreAi proposte={await proposteAperte()} nonDisponibile={await motivoNonDisponibile("redattore")} />
+      ) : null}
       <ElencoContenuti contenuti={contenuti} />
     </main>
   );

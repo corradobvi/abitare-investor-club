@@ -7,6 +7,27 @@ import FormImpostazioni from "./FormImpostazioni";
 import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 import { AVVERTENZA_CASE_STUDY_PREDEFINITA, MESSAGGIO_CONDIVISIONE_PREDEFINITO } from "@/lib/contenuti/testi";
 import CellulariReferenti from "./CellulariReferenti";
+import AgentiAi, { type LavoroMostrato } from "./AgentiAi";
+import { tettoSpesaAi } from "@/lib/impostazioni";
+import { agenteAttivo, chiaveAiPresente, NOMI_AGENTI, spesaAiDelMese, type Agente } from "@/lib/ai/motore";
+import { prisma } from "@/lib/prisma";
+import { utentiPerId } from "@/lib/crm/lettura";
+
+// Ultimi lavori degli agenti AI, con il nome di chi li ha chiesti.
+async function ultimiLavoriAi(): Promise<LavoroMostrato[]> {
+  const righe = await prisma.clubChiamataAI.findMany({ orderBy: { createdAt: "desc" }, take: 15 });
+  const utenti = await utentiPerId([...new Set(righe.map((r) => r.userId).filter((x): x is string => !!x))]);
+  return righe.map((r) => ({
+    id: r.id,
+    quando: r.createdAt.toISOString(),
+    agente: NOMI_AGENTI[r.agente as Agente] ?? r.agente,
+    azione: r.azione,
+    chi: (r.userId && utenti.get(r.userId)?.name) || "—",
+    costoEuro: Number(r.costoEuro),
+    esito: r.esito,
+    errore: r.errore,
+  }));
+}
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +74,14 @@ export default async function ImpostazioniPage() {
       />
 
       <CellulariReferenti referenti={await opzioniReferente(null)} iniziali={cellulariReferenti(imp)} />
+
+      <AgentiAi
+        chiavePresente={chiaveAiPresente()}
+        agenti={(Object.keys(NOMI_AGENTI) as Agente[]).map((a) => ({ chiave: a, nome: NOMI_AGENTI[a], attivo: agenteAttivo(imp, a) }))}
+        tetto={tettoSpesaAi(imp)}
+        spesaMese={await spesaAiDelMese()}
+        lavori={await ultimiLavoriAi()}
+      />
 
       <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22, marginBottom: 4 }}>Solo consultazione</h2>

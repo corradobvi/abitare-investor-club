@@ -136,3 +136,25 @@ export async function salvaCellulariReferenti(valori: Record<string, string>): P
   revalidatePath("/impostazioni");
   return { ok: true };
 }
+
+// --- Agenti AI ---
+
+const INTERRUTTORI_AGENTI: Record<string, "agenteRedattoreAttivo"> = { redattore: "agenteRedattoreAttivo" };
+
+export async function salvaInterruttoreAgente(agente: string, attivo: boolean): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const chiave = typeof agente === "string" ? INTERRUTTORI_AGENTI[agente] : undefined;
+  if (!chiave || typeof attivo !== "boolean") return { ok: false, errore: "Richiesta non valida." };
+  await salvaImpostazione(chiave, attivo ? "true" : "false", utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function salvaTettoSpesaAi(testo: string): Promise<Esito> {
+  const utente = await utenteImpostazioni();
+  const n = Number((typeof testo === "string" ? testo : "").trim().replace(",", "."));
+  if (!Number.isFinite(n) || n < 0 || n > 10000) return { ok: false, errore: "Scrivi un importo in euro tra 0 e 10.000." };
+  await salvaImpostazione("tettoSpesaAiMensileEuro", String(Math.round(n * 100) / 100), utente.id);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

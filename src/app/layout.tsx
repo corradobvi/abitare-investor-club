@@ -1,18 +1,27 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { Inter, Cormorant_Garamond } from "next/font/google";
+import localFont from "next/font/local";
 
 // Stessi font del CRM: Inter per il corpo, Cormorant Garamond per i titoli
-// (esposto come variabile CSS --font-serif).
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+// (esposto come variabile CSS --font-serif). File nel progetto (src/app/fonts,
+// da Fontsource, licenza OFL) invece di next/font/google: la build non
+// dipende piu' dal download da Google, che a volte falliva su Railway.
+const inter = localFont({
+  src: [
+    { path: "./fonts/inter-latin-400-normal.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/inter-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/inter-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/inter-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
   display: "swap",
 });
 
-const cormorant = Cormorant_Garamond({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
+const cormorant = localFont({
+  src: [
+    { path: "./fonts/cormorant-garamond-latin-500-normal.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/cormorant-garamond-latin-600-normal.woff2", weight: "600", style: "normal" },
+    { path: "./fonts/cormorant-garamond-latin-700-normal.woff2", weight: "700", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-serif",
 });

@@ -116,7 +116,10 @@ export default async function ElencoPage() {
           <h2 className="titolo" style={{ fontSize: 22 }}>Novità</h2>
           {gruppi.length > 0 ? gruppi : <p className="tenue" style={{ fontSize: 14, marginTop: 8 }}>Nessuna novità recente.</p>}
         </section>
-        <RiquadroLinkNuovi iniziale={imp.urlPubblicoPortale ? linkNuoviMostrato(codice, imp) : null} />
+        <RiquadroLinkNuovi
+          iniziale={imp.urlPubblicoPortale ? linkNuoviMostrato(codice, imp) : null}
+          urlIscrizione={imp.urlPubblicoPortale ? `${imp.urlPubblicoPortale.replace(/\/+$/, "")}/iscriviti` : null}
+        />
       </div>
       <ElencoInvestitori righe={righe} />
       {renderContattiProva(prova, puoCreareContattiProva(utente.ruolo))}

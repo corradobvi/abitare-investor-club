@@ -4,6 +4,9 @@
 // interessi; "Approfondimenti" (consigliati per il profilo, poi formazione,
 // case study e news); "Il mio profilo" con il riepilogo e la modifica delle
 // risposte (riapre la procedura guidata sulla domanda scelta).
+// Con l'accesso limitato (iscritto dalla pagina pubblica, non ancora
+// confermato) al posto delle operazioni in corso ci sono i case study delle
+// operazioni concluse (src/lib/accesso-limitato.ts).
 import Link from "next/link";
 import { useState } from "react";
 import type { VoceCliente } from "@/lib/operazioni/interessi";
@@ -38,6 +41,7 @@ type Props = {
   novita: NovitaPerTe;
   vistaIniziale: Vista;
   fascia: string | null;
+  limitato: boolean;
 };
 
 export type Vista = "operazioni" | "approfondimenti" | "profilo";
@@ -59,7 +63,7 @@ const STATO_PER_CLIENTE: Record<string, string> = {
   ritirata: "Interesse ritirato",
 };
 
-export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, approfondimenti, novita, vistaIniziale, fascia }: Props) {
+export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, approfondimenti, novita, vistaIniziale, fascia, limitato }: Props) {
   const [vista, setVista] = useState<Vista>(vistaIniziale);
   const base = `/c/${token}`;
 
@@ -141,7 +145,27 @@ export default function AreaCliente({ token, nome, referente, perTe, interessi, 
     );
   }
 
+  function renderOperazioniPrimaConferma() {
+    return (
+      <div style={{ display: "grid", gap: 16 }}>
+        <div className="riquadro" style={{ textAlign: "left", display: "grid", gap: 12 }}>
+          <p className="testo-portale">
+            Le operazioni in corso le vedrai dopo che {referente.nome ?? "il tuo referente"} ti avrà contattato per
+            conoscerti. Intanto puoi scoprire le operazioni che abbiamo già concluso.
+          </p>
+          {referente.whatsapp ? (
+            <a className="pulsante" href={referente.whatsapp} target="_blank" rel="noopener noreferrer" style={{ justifySelf: "start" }}>
+              Scrivi al tuo referente su WhatsApp
+            </a>
+          ) : null}
+        </div>
+        {renderElencoApprofondimenti("Operazioni concluse", approfondimenti.caseStudy)}
+      </div>
+    );
+  }
+
   function renderOperazioni() {
+    if (limitato) return renderOperazioniPrimaConferma();
     const altriInteressi = interessi.filter((v) => !perTe.some((p) => p.op.id === v.op.id));
     return (
       <div style={{ display: "grid", gap: 16 }}>

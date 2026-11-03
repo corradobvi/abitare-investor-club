@@ -18,6 +18,7 @@ export function inputContenutoVuoto(tipo = "formazione"): InputContenuto {
     durataStimataMesi: "",
     durataRealeMesi: "",
     notaRisultati: "",
+    visibilePrimaConferma: false,
   };
 }
 
@@ -38,5 +39,6 @@ export function inputDaContenuto(c: ContenutoInterno): InputContenuto {
     durataStimataMesi: c.durataStimataMesi === null ? "" : String(c.durataStimataMesi),
     durataRealeMesi: c.durataRealeMesi === null ? "" : String(c.durataRealeMesi),
     notaRisultati: c.notaRisultati ?? "",
+    visibilePrimaConferma: c.visibilePrimaConferma,
   };
 }

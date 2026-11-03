@@ -1,11 +1,12 @@
 "use client";
 // Riquadro in Home: il link personale dell'utente per far registrare nuovi
-// investitori (/entra/<codice>), con Copia, Condividi su WhatsApp e Rigenera.
+// investitori (/entra/<codice>), con Copia, Condividi su WhatsApp e Rigenera;
+// sotto, l'indirizzo della pagina pubblica di iscrizione (/iscriviti).
 import { useState, useTransition } from "react";
 import type { LinkNuoviMostrato } from "@/lib/codici-invito";
 import { rigeneraMioLink } from "./azioni-link-nuovi";
 
-export default function RiquadroLinkNuovi({ iniziale }: { iniziale: LinkNuoviMostrato | null }) {
+export default function RiquadroLinkNuovi({ iniziale, urlIscrizione }: { iniziale: LinkNuoviMostrato | null; urlIscrizione: string | null }) {
   const [link, setLink] = useState(iniziale);
   const [messaggio, setMessaggio] = useState("");
   const [inCorso, avvia] = useTransition();
@@ -56,6 +57,16 @@ export default function RiquadroLinkNuovi({ iniziale }: { iniziale: LinkNuoviMos
         <p style={{ fontSize: 13 }}>Manca l&apos;indirizzo pubblico del portale nelle impostazioni.</p>
       )}
       {messaggio ? <p style={{ fontSize: 13, marginTop: 10 }}>{messaggio}</p> : null}
+      {urlIscrizione ? (
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--off-white)" }}>
+          <span className="etichetta">Pagina pubblica di iscrizione (sito, social)</span>
+          <input className="campo" readOnly value={urlIscrizione} onFocus={(e) => e.currentTarget.select()} style={{ fontSize: 12 }} />
+          <p className="tenue" style={{ fontSize: 12, marginTop: 6, lineHeight: 1.5 }}>
+            Chi si iscrive da qui entra &quot;da confermare&quot; con il referente default e, finché non è confermato, vede
+            solo profilo, case study e contenuti scelti.
+          </p>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -34,7 +34,7 @@ export default async function ApprofondimentoPage({ params }: { params: Promise<
   if (!ctx) return renderPaginaMessaggio(TESTO_LINK_NON_VALIDO.titolo, TESTO_LINK_NON_VALIDO.testo);
   if (ctx.modalita === "chiuso") return renderPaginaMessaggio(TESTO_IN_PREPARAZIONE.titolo, TESTO_IN_PREPARAZIONE.testo);
   if (!completezzaProfilo(ctx.risposte).completo) redirect(`/c/${token}`);
-  const c = await contenutoPubblicato(slug);
+  const c = await contenutoPubblicato(slug, ctx.investitore.limitato);
   const area = `/c/${token}?vista=approfondimenti`;
   if (!c) {
     return renderPaginaMessaggio(

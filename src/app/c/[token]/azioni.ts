@@ -25,6 +25,7 @@ import { importoNeiLimiti, limitiSimulatore } from "@/lib/simulatore";
 import { massimoCapitale } from "@/lib/compatibilita";
 import { prisma } from "@/lib/prisma";
 import { registraLetturaContenuto } from "@/lib/contenuti/dati";
+import { contenutoPrimaConferma } from "@/lib/accesso-limitato";
 import { aggiornamentoVisibileAlCliente, registraLetturaAggiornamento } from "@/lib/operazioni/aggiornamenti";
 
 type Esito = { ok: true; completo: boolean } | { ok: false; errore: string };
@@ -137,7 +138,7 @@ export async function segnalaLetturaContenuto(token: unknown, contenutoId: unkno
   const ctx = await contestoDaTracciare(token);
   if (!ctx || !completezzaProfilo(ctx.risposte).completo) return;
   const c = await prisma.clubContenuto.findUnique({ where: { id: contenutoId } });
-  if (!c || c.stato !== "pubblicato") return;
+  if (!c || c.stato !== "pubblicato" || (ctx.investitore.limitato && !contenutoPrimaConferma(c))) return;
   await registraLetturaContenuto(ctx.investitore.rif, c);
 }
 

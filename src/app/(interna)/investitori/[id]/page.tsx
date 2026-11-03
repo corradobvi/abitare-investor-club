@@ -203,9 +203,15 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
             style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", whiteSpace: "normal", fontWeight: 500, fontSize: 13, padding: "10px 12px", borderRadius: 8, marginBottom: 16 }}
           >
             <span style={{ flex: "1 1 260px" }}>
-              <strong>Da confermare.</strong> Si è registrato da solo con il link d&apos;invito del referente
+              <strong>Da confermare.</strong>{" "}
+              {contatto.origine === "modulo-pubblico"
+                ? "Ha chiesto l'iscrizione dalla pagina pubblica del Club"
+                : "Si è registrato da solo con il link d'invito del referente"}
               {contatto.consensoContattoIl ? `, con consenso al contatto del ${data(contatto.consensoContattoIl)}` : ""}.
               Controlla i dati e conferma, oppure scarta se non è un contatto valido.
+              {contatto.origine === "modulo-pubblico"
+                ? " Finché non lo confermi vede solo il suo profilo, i case study e i contenuti segnati come visibili prima della conferma."
+                : ""}
             </span>
             <PulsantiConferma chiave={investitore.chiave} nome={nomeCompleto(investitore)} dopoScarta="/" />
           </div>

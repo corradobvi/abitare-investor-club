@@ -1,8 +1,10 @@
 "use client";
+// Modulo di registrazione di un nuovo investitore: link del consulente
+// (/entra/<codice>) o pagina pubblica (/iscriviti, codice null).
 import { useState } from "react";
-import { registrati } from "./azioni";
+import { registrati } from "@/app/azioni-registrazione";
 
-type Props = { codice: string; urlInformativa: string; anteprima: boolean };
+type Props = { codice: string | null; urlInformativa: string; anteprima: boolean };
 
 type Valori = { nome: string; cognome: string; cellulare: string; email: string; sito: string };
 

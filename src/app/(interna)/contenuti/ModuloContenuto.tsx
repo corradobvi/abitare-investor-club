@@ -36,7 +36,7 @@ type Props = {
   operazioni: { valore: string; etichetta: string }[]; // per collegare un case study
 };
 
-type CampoTesto = Exclude<keyof InputContenuto, "argomenti">;
+type CampoTesto = Exclude<keyof InputContenuto, "argomenti" | "visibilePrimaConferma">;
 
 function numero(t: string): number | null {
   const v = t.replace(/[\s.€]/g, "");
@@ -263,6 +263,21 @@ export default function ModuloContenuto({ id, iniziali, haCopertina, allegati, a
             <textarea id="sommario" className="campo" rows={2} maxLength={MASSIMO_SOMMARIO} value={valori.sommario} onChange={(e) => cambia("sommario", e.target.value)} />
           </div>
           {renderArgomenti()}
+          {caseStudy ? (
+            <p className="tenue" style={{ fontSize: 12 }}>
+              I case study li vede anche chi si è iscritto dalla pagina pubblica e non è ancora confermato.
+            </p>
+          ) : (
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={valori.visibilePrimaConferma}
+                onChange={(e) => cambia("visibilePrimaConferma", e.target.checked)}
+                style={{ marginTop: 2 }}
+              />
+              <span>Visibile anche a chi si è iscritto dalla pagina pubblica e non è ancora confermato</span>
+            </label>
+          )}
         </section>
 
         <section className="riquadro" style={{ display: "grid", gap: 8 }}>

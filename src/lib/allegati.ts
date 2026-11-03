@@ -19,6 +19,7 @@ import { caricaFile, eliminaFile, nuovaChiave, verificaFile } from "@/lib/archiv
 import { nomeFile } from "@/lib/operazioni/dati";
 import { MASSIMO_ALLEGATI_AGGIORNAMENTO, MASSIMO_ALLEGATI_CONTENUTO, type AllegatoMostrato } from "@/lib/contenuti/definizioni";
 import { operazioneDelCliente } from "@/lib/operazioni/interessi";
+import { accessoLimitato, contenutoPrimaConferma } from "@/lib/accesso-limitato";
 import { aggiornamentoVisibileAlCliente } from "@/lib/operazioni/cliente";
 import type { Risposte } from "@/lib/profilo/domande";
 import type { Rif } from "@/lib/riferimento";
@@ -108,11 +109,15 @@ export async function allegatoPerUtente(utente: UtenteClub, id: string): Promise
   return a.aggiornamento && puoVedereOperazione(utente, a.aggiornamento.operazione) ? a : null;
 }
 
-// Portale: l'allegato, se il cliente vede il contenuto (pubblicato) o l'aggiornamento.
+// Portale: l'allegato, se il cliente vede il contenuto (pubblicato e, con
+// l'accesso limitato, visibile prima della conferma) o l'aggiornamento.
 export async function allegatoPerCliente(rif: Rif, risposte: Risposte, id: string): Promise<ClubAllegato | null> {
   const a = await prisma.clubAllegato.findUnique({ where: { id }, include: { contenuto: true, aggiornamento: true } });
   if (!a) return null;
-  if (a.contenuto) return a.contenuto.stato === "pubblicato" ? a : null;
+  if (a.contenuto) {
+    if (a.contenuto.stato !== "pubblicato") return null;
+    return contenutoPrimaConferma(a.contenuto) || !(await accessoLimitato(rif)) ? a : null;
+  }
   if (!a.aggiornamento) return null;
   const v = await operazioneDelCliente(rif, risposte, a.aggiornamento.operazioneId);
   return v && aggiornamentoVisibileAlCliente(a.aggiornamento, v.op.livello) ? a : null;

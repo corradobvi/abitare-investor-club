@@ -21,9 +21,10 @@ function voce(c: ContenutoMostrato): VoceApprofondimento {
   return { id: c.id, slug: c.slug, tipo: c.tipo, titolo: c.titolo, sommario: c.sommario, livello: c.livello, data: c.data, copertina: c.haCopertina };
 }
 
-// Pubblicati, piu' recenti prima: consigliati per il profilo e i tre elenchi.
-export async function approfondimentiPerCliente(risposte: Risposte) {
-  const tutti = await contenutiPubblicati();
+// Pubblicati, piu' recenti prima: consigliati per il profilo e i tre elenchi
+// (con l'accesso limitato solo quelli visibili prima della conferma).
+export async function approfondimentiPerCliente(risposte: Risposte, limitato = false) {
+  const tutti = await contenutiPubblicati(limitato);
   return {
     tutti,
     consigliati: tutti.filter((c) => eConsigliato(c, risposte)).map(voce),

@@ -19,6 +19,7 @@ import { inEuro } from "@/lib/operazioni/definizioni";
 import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
 import { allegatoMostrato, ORDINE_ALLEGATI } from "@/lib/allegati";
 import type { Rif } from "@/lib/riferimento";
+import { contenutoPrimaConferma, FILTRO_PRIMA_CONFERMA } from "@/lib/accesso-limitato";
 import {
   ARGOMENTI,
   LIVELLI,
@@ -31,6 +32,7 @@ import {
 export type ContenutoInterno = ContenutoMostrato & {
   stato: string;
   operazioneId: string | null;
+  visibilePrimaConferma: boolean;
   autoreUserId: string;
   pubblicatoDaUserId: string | null;
   createdAt: string;
@@ -70,6 +72,7 @@ function contenutoInterno(c: ClubContenuto & { allegati?: ClubAllegato[] }): Con
     ...contenutoMostrato(c),
     stato: c.stato,
     operazioneId: c.operazioneId,
+    visibilePrimaConferma: c.visibilePrimaConferma,
     autoreUserId: c.autoreUserId,
     pubblicatoDaUserId: c.pubblicatoDaUserId,
     createdAt: c.createdAt.toISOString(),
@@ -99,16 +102,22 @@ export async function copertinaPerUtente(utente: UtenteClub, id: string): Promis
 }
 
 // --- Portale cliente: solo i pubblicati ---
+// limitato = chi non e' ancora confermato dopo l'iscrizione dalla pagina
+// pubblica: solo i contenuti visibili prima della conferma.
 
-export async function contenutiPubblicati(): Promise<ContenutoMostrato[]> {
-  const righe = await prisma.clubContenuto.findMany({ where: { stato: "pubblicato" }, orderBy: { pubblicatoIl: "desc" }, include: CON_ALLEGATI });
+export async function contenutiPubblicati(limitato = false): Promise<ContenutoMostrato[]> {
+  const righe = await prisma.clubContenuto.findMany({
+    where: { stato: "pubblicato", ...(limitato ? FILTRO_PRIMA_CONFERMA : {}) },
+    orderBy: { pubblicatoIl: "desc" },
+    include: CON_ALLEGATI,
+  });
   return righe.map(contenutoMostrato);
 }
 
-export async function contenutoPubblicato(slug: string): Promise<(ClubContenuto & { allegati: ClubAllegato[] }) | null> {
+export async function contenutoPubblicato(slug: string, limitato = false): Promise<(ClubContenuto & { allegati: ClubAllegato[] }) | null> {
   if (!slug) return null;
   const c = await prisma.clubContenuto.findUnique({ where: { slug }, include: CON_ALLEGATI });
-  return c && c.stato === "pubblicato" ? c : null;
+  return c && c.stato === "pubblicato" && (!limitato || contenutoPrimaConferma(c)) ? c : null;
 }
 
 // --- Salvataggio dal modulo ---
@@ -127,6 +136,7 @@ export type InputContenuto = {
   durataStimataMesi: string;
   durataRealeMesi: string;
   notaRisultati: string;
+  visibilePrimaConferma: boolean; // anche per chi non e' ancora confermato (src/lib/accesso-limitato.ts)
 };
 
 export type ErroriContenuto = Partial<Record<keyof InputContenuto, string>>;
@@ -187,6 +197,7 @@ function leggiInput(input: Partial<InputContenuto>) {
       durataStimataMesi: caseStudy ? intero("durataStimataMesi", 600) : null,
       durataRealeMesi: caseStudy ? intero("durataRealeMesi", 600) : null,
       notaRisultati: caseStudy ? testo("notaRisultati", 2000) || null : null,
+      visibilePrimaConferma: input.visibilePrimaConferma === true,
     },
   };
 }

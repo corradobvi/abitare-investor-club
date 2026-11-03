@@ -18,7 +18,7 @@ import {
   TESTO_IN_PREPARAZIONE,
   TESTO_LINK_NON_VALIDO,
 } from "@/app/portale-ui";
-import ModuloRegistrazione from "./ModuloRegistrazione";
+import ModuloRegistrazione from "@/app/ModuloRegistrazione";
 
 export const dynamic = "force-dynamic";
 

@@ -6,7 +6,8 @@
 //   senza salvare nulla. Eccezione: i contatti di prova, che per lo staff
 //   funzionano davvero (src/lib/portale.ts).
 // - Profilo non completo (o ?modifica=<domanda>): procedura guidata.
-// - Profilo completo: "La tua area" (operazioni per te e profilo).
+// - Profilo completo: "La tua area" (operazioni per te e profilo). Con
+//   l'accesso limitato, case study al posto delle operazioni in corso.
 // In pagina solo il nome del cliente e il nome/contatto del referente.
 // L'apertura si conta dal browser (PingApertura / ProceduraGuidata), non qui.
 import type { Metadata } from "next";
@@ -76,7 +77,7 @@ export default async function LinkClientePage({
   const [{ perTe, interessi }, utenti, approfondimenti] = await Promise.all([
     operazioniDelCliente(investitore.rif, risposte),
     utentiPerId(investitore.referenteUserId ? [investitore.referenteUserId] : []),
-    approfondimentiPerCliente(risposte),
+    approfondimentiPerCliente(risposte, investitore.limitato),
   ]);
   // Ultima visita: l'apertura di questa pagina si registra dopo, dal browser.
   const novita = await novitaPerCliente(ctx.link.ultimoAccessoIl, [...perTe, ...interessi], approfondimenti.consigliati);
@@ -110,6 +111,7 @@ export default async function LinkClientePage({
         novita={novita}
         vistaIniziale={vista === "approfondimenti" || vista === "profilo" ? vista : "operazioni"}
         fascia={modalita === "anteprima" ? "Anteprima: niente viene salvato" : modalita === "prova" ? TESTO_FASCIA_PROVA : null}
+        limitato={investitore.limitato}
       />
     </>
   );

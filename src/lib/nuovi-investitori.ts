@@ -166,8 +166,8 @@ export async function cercaDoppione(
 export type EsitoNuovo = { ok: true; chiave: string } | { ok: false; errore: string; doppione?: Doppione };
 
 // Scrittura del nuovo contatto: UNICO punto in cui nasce un nuovo investitore
-// dal Club, sia dall'area interna (creaNuovoInvestitore) sia dal link del
-// consulente (registraDaLinkConsulente).
+// dal Club, sia dall'area interna (creaNuovoInvestitore) sia da chi si
+// registra da solo (registraDaSolo).
 async function salvaNuovoContatto(
   tx: Prisma.TransactionClient,
   dati: DatiPuliti,
@@ -176,6 +176,7 @@ async function salvaNuovoContatto(
     creatoDaUserId: string;
     stato: "confermato" | "da-confermare";
     consensoContattoIl?: Date;
+    origine?: OrigineRegistrazione;
   },
   evento: Prisma.InputJsonObject,
 ): Promise<ClubContattoNuovo> {
@@ -282,24 +283,36 @@ export async function modificaContattoNuovo(
 }
 
 // ---------------------------------------------------------------------------
-// Registrazione dal link personale di un consulente (/entra/<codice>)
+// Registrazione da soli: dal link personale di un consulente (/entra/<codice>)
+// o dalla pagina pubblica (/iscriviti)
+
+export type OrigineRegistrazione = "link-consulente" | "modulo-pubblico";
 
 export type EsitoRegistrazione =
   | { ok: true; token: string | null } // token null = doppione: niente procedura
   | { ok: false; errore: string };
 
+const NON_DISPONIBILE = "Registrazione non disponibile al momento.";
+
 // Chi si registra da solo: dati puliti come nel modulo interno (senza note),
 // controllo doppioni nel CRM e nella lista temporanea. Il visitatore NON deve
 // sapere se esisteva gia': in caso di doppione l'esito e' comunque ok (senza
 // token) e si registra "registrazione-doppione" per il referente.
-// Altrimenti nasce un contatto "da-confermare" con referente = utente del
-// codice, piu' il suo link personale per la procedura guidata.
-export async function registraDaLinkConsulente(
+// Altrimenti nasce un contatto "da-confermare" con il suo link personale per
+// la procedura guidata. Referente: l'utente del codice (link del consulente)
+// oppure il referente default (pagina pubblica). Dalla pagina pubblica,
+// finche' non e' confermato, l'accesso al portale e' limitato
+// (src/lib/accesso-limitato.ts).
+export async function registraDaSolo(
   inviati: DatiInviati,
-  codice: { id: string; userId: string },
+  provenienza: { origine: "link-consulente"; codice: { id: string; userId: string } } | { origine: "modulo-pubblico" },
 ): Promise<EsitoRegistrazione> {
   const imp = await leggiImpostazioni();
-  if (modalitaNonDisponibile(imp)) return { ok: false, errore: "Registrazione non disponibile al momento." };
+  if (modalitaNonDisponibile(imp)) return { ok: false, errore: NON_DISPONIBILE };
+  const referenteUserId = provenienza.origine === "link-consulente" ? provenienza.codice.userId : imp.referenteDefaultUserId;
+  if (!referenteUserId) return { ok: false, errore: NON_DISPONIBILE };
+  const codice = provenienza.origine === "link-consulente" ? provenienza.codice : null;
+  const traccia = { origine: provenienza.origine, ...(codice ? { codiceId: codice.id } : {}) };
 
   const p = pulisci({ ...inviati, note: null });
   if (!p.ok) return p;
@@ -318,8 +331,8 @@ export async function registraDaLinkConsulente(
         ...rif,
         tipo: "registrazione-doppione",
         dati: {
-          referenteUserId: codice.userId,
-          codiceId: codice.id,
+          referenteUserId,
+          ...traccia,
           trovatoIn: trovato.tipo === "lista" ? "lista" : investitoreCrm ? "investitore-crm" : "cliente-crm",
           nome: p.dati.nome,
           cognome: p.dati.cognome,
@@ -335,17 +348,16 @@ export async function registraDaLinkConsulente(
       tx,
       p.dati,
       {
-        referenteUserId: codice.userId,
-        creatoDaUserId: codice.userId,
+        referenteUserId,
+        creatoDaUserId: referenteUserId,
         stato: "da-confermare",
         consensoContattoIl: new Date(),
+        origine: provenienza.origine,
       },
-      { origine: "link-consulente", codiceId: codice.id },
+      traccia,
     );
-    await tx.clubLinkInvito.create({ data: { token, contattoNuovoId: c.id, creatoDaUserId: codice.userId } });
-    await tx.clubEvento.create({
-      data: { contattoNuovoId: c.id, tipo: "link-creato", dati: { origine: "link-consulente", codiceId: codice.id } },
-    });
+    await tx.clubLinkInvito.create({ data: { token, contattoNuovoId: c.id, creatoDaUserId: referenteUserId } });
+    await tx.clubEvento.create({ data: { contattoNuovoId: c.id, tipo: "link-creato", dati: traccia } });
   });
   return { ok: true, token };
 }

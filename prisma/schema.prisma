@@ -140,6 +140,10 @@ model ClubContenuto {
   durataRealeMesi      Int?
   notaRisultati        String?
 
+  // Visibile anche a chi si e' iscritto dalla pagina pubblica e non e' ancora
+  // confermato (src/lib/accesso-limitato.ts). I case study lo sono sempre.
+  visibilePrimaConferma Boolean @default(false)
+
   stato              String    @default("bozza") // bozza | pubblicato | archiviato
   autoreUserId       String // id User del CRM
   pubblicatoIl       DateTime?
@@ -355,6 +359,11 @@ model ClubContattoNuovo {
   referenteUserId    String // id User del CRM
   creatoDaUserId     String // id User del CRM
   stato              String    @default("confermato") // da-confermare | confermato | importato
+  // Come e' entrato: link-consulente (/entra/<codice>) | modulo-pubblico
+  // (/iscriviti) | null (inserito dallo staff). Gli iscritti dal modulo
+  // pubblico, finche' sono da confermare, hanno l'accesso limitato al portale
+  // (src/lib/accesso-limitato.ts).
+  origine            String?
   // Consenso al contatto dato da chi si registra da solo (/entra/<codice>).
   consensoContattoIl DateTime?
   crmClienteId       String?

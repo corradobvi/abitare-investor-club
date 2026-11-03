@@ -10,6 +10,7 @@ import { referenteComeAssegnato, STATI_CON_PORTALE } from "@/lib/nuovi-investito
 import { profiliPerRif, rispostePerProfilo } from "@/lib/profilo/archivio";
 import type { Risposte } from "@/lib/profilo/domande";
 import { chiaveDiRif, type Rif } from "@/lib/riferimento";
+import { eAccessoLimitato } from "@/lib/accesso-limitato";
 
 // attivo = il cliente usa il portale; anteprima = portale spento, ma chi
 // guarda e' un utente dell'area interna (niente viene salvato); chiuso =
@@ -27,6 +28,7 @@ export type InvestitoreDelLink = {
   referente: string | null; // nome del referente
   referenteUserId: string | null;
   prova: boolean; // contatto di prova dello staff
+  limitato: boolean; // iscritto dalla pagina pubblica, da confermare (src/lib/accesso-limitato.ts)
 };
 
 // Investitore di un link valido: cliente CRM che e' ancora investitore,
@@ -39,7 +41,7 @@ export async function investitoreDelLink(link: ClubLinkInvito, imp: Impostazioni
     const ref = await referentePerCliente(c, imp);
     const nomeReferente =
       ref.origine === "assegnato" ? c.consulenteNome : ref.userId ? (await utentiPerId([ref.userId])).get(ref.userId)?.name : null;
-    return { rif: { clienteId: c.id }, nome: c.nome?.trim() ?? "", referente: nomeReferente ?? null, referenteUserId: ref.userId, prova: false };
+    return { rif: { clienteId: c.id }, nome: c.nome?.trim() ?? "", referente: nomeReferente ?? null, referenteUserId: ref.userId, prova: false, limitato: false };
   }
   if (link.contattoNuovoId) {
     const c = await prisma.clubContattoNuovo.findFirst({
@@ -51,7 +53,7 @@ export async function investitoreDelLink(link: ClubLinkInvito, imp: Impostazioni
     const nomeReferente = ref.userId
       ? (ref.userId === c.referenteUserId ? utenti : await utentiPerId([ref.userId])).get(ref.userId)?.name
       : null;
-    return { rif: { contattoNuovoId: c.id }, nome: c.nome.trim(), referente: nomeReferente ?? null, referenteUserId: ref.userId, prova: c.prova };
+    return { rif: { contattoNuovoId: c.id }, nome: c.nome.trim(), referente: nomeReferente ?? null, referenteUserId: ref.userId, prova: c.prova, limitato: eAccessoLimitato(c) };
   }
   return null;
 }

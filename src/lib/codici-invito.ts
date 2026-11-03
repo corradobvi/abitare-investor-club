@@ -3,7 +3,7 @@
 //
 // Un solo codice attivo per utente, creato al primo bisogno; "Rigenera link"
 // disattiva il vecchio e ne crea uno nuovo. Chi si registra con il codice ha
-// come referente l'utente del codice (vedi registraDaLinkConsulente).
+// come referente l'utente del codice (vedi registraDaSolo).
 import { randomBytes } from "node:crypto";
 import { Prisma, type ClubCodiceInvito } from "@prisma/client";
 import { prisma } from "@/lib/prisma";

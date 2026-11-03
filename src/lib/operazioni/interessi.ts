@@ -9,6 +9,8 @@
 // - sintetica: operazione pubblicata e compatibile col profilo
 //   (src/lib/compatibilita.ts);
 // - altrimenti nessun accesso (bozze, ritirate, concluse, non compatibili).
+// Chi ha l'accesso limitato (iscritto dalla pagina pubblica, da confermare)
+// non vede nessuna operazione (src/lib/accesso-limitato.ts).
 import type { ClubManifestazioneInteresse, ClubOperazione, ClubOperazioneFile } from "@prisma/client";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -21,6 +23,7 @@ import type { Risposte } from "@/lib/profilo/domande";
 import type { UtenteClub } from "@/lib/permessi";
 import { chiaveDiRif, chiaveDiRiga, filtroPerRif, type Rif } from "@/lib/riferimento";
 import { ricalcolaPunteggio } from "@/lib/punteggio-dati";
+import { accessoLimitato } from "@/lib/accesso-limitato";
 
 const ORDINE_FILE = [{ tipo: "asc" as const }, { ordine: "asc" as const }, { createdAt: "asc" as const }];
 
@@ -109,6 +112,7 @@ export async function operazioniDelCliente(
   rif: Rif,
   risposte: Risposte,
 ): Promise<{ perTe: VoceCliente[]; interessi: VoceCliente[] }> {
+  if (await accessoLimitato(rif)) return { perTe: [], interessi: [] };
   const [ops, accessi] = await Promise.all([
     prisma.clubOperazione.findMany({
       where: { stato: { in: ["pubblicata", "raccolta-chiusa"] } },
@@ -128,7 +132,7 @@ export async function operazioniDelCliente(
 
 // Una sola operazione per il cliente (null = nessun accesso).
 export async function operazioneDelCliente(rif: Rif, risposte: Risposte, id: string): Promise<VoceCliente | null> {
-  if (!id) return null;
+  if (!id || (await accessoLimitato(rif))) return null;
   const [o, accessi] = await Promise.all([
     prisma.clubOperazione.findUnique({ where: { id }, include: { file: { orderBy: ORDINE_FILE } } }),
     accessiDi(rif),

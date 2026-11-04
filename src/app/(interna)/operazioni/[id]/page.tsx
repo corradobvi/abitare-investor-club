@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   puoAggiornareRaccolta,
+  puoCreareOperazioni,
   puoEliminareAggiornamento,
   puoModificareOperazione,
   puoPubblicareAggiornamento,
@@ -12,6 +13,9 @@ import { aggiornamentiOperazione } from "@/lib/operazioni/aggiornamenti";
 import { renderAggiornamento } from "@/app/aggiornamento-ui";
 import NuovoAggiornamento, { PulsanteEliminaAggiornamento } from "./NuovoAggiornamento";
 import CreaCaseStudy from "./CreaCaseStudy";
+import AnalistaAi from "./AnalistaAi";
+import { ultimeAnalisi } from "@/lib/ai/analista";
+import { motivoNonDisponibile } from "@/lib/ai/motore";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { utentiPerId } from "@/lib/crm/lettura";
 import { azioniPermesse, copertina, eventiOperazione, operazionePerUtente, type FileMostrato } from "@/lib/operazioni/dati";
@@ -606,6 +610,15 @@ export default async function SchedaOperazionePage({
             <h2 className="titolo" style={{ fontSize: 22, marginBottom: 6 }}>Documenti ({documenti.length})</h2>
             {documenti.length ? <ul style={{ listStyle: "none" }}>{documenti.map(renderDocumento)}</ul> : <p className="tenue" style={{ fontSize: 14 }}>Nessun documento.</p>}
           </section>
+
+          {puoCreareOperazioni(utente.ruolo) ? (
+            <AnalistaAi
+              operazioneId={op.id}
+              analisi={await ultimeAnalisi(utente, op.id)}
+              puoApplicare={puoModificareOperazione(utente, op)}
+              nonDisponibile={await motivoNonDisponibile("analista")}
+            />
+          ) : null}
 
           {await renderDiario()}
 

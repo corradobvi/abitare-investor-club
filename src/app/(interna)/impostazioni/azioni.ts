@@ -139,7 +139,10 @@ export async function salvaCellulariReferenti(valori: Record<string, string>): P
 
 // --- Agenti AI ---
 
-const INTERRUTTORI_AGENTI: Record<string, "agenteRedattoreAttivo"> = { redattore: "agenteRedattoreAttivo" };
+const INTERRUTTORI_AGENTI: Record<string, "agenteRedattoreAttivo" | "agenteAnalistaAttivo"> = {
+  redattore: "agenteRedattoreAttivo",
+  analista: "agenteAnalistaAttivo",
+};
 
 export async function salvaInterruttoreAgente(agente: string, attivo: boolean): Promise<Esito> {
   const utente = await utenteImpostazioni();

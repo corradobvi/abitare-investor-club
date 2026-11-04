@@ -20,14 +20,16 @@ import { cambioDelGiorno } from "@/lib/cambi";
 
 export const MODELLO_AI = "claude-opus-5-5";
 
-export type Agente = "redattore";
+export type Agente = "redattore" | "analista";
 
 const INTERRUTTORI: Record<Agente, keyof Impostazioni> = {
   redattore: "agenteRedattoreAttivo",
+  analista: "agenteAnalistaAttivo",
 };
 
 export const NOMI_AGENTI: Record<Agente, string> = {
   redattore: "Redattore contenuti",
+  analista: "Analista operazioni",
 };
 
 // Prezzi di listino in dollari per milione di token (input, output, lettura

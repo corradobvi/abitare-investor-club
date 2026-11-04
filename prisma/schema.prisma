@@ -450,3 +450,25 @@ model ClubPropostaTema {
 
   @@index([stato, createdAt])
 }
+
+// Analisi di un'operazione fatta dall'analista AI (src/lib/ai/analista.ts):
+// solo per lo staff, mai mostrata ai clienti. Si conservano tutte (storico);
+// nella scheda si vede l'ultima. "risultato" = analisi strutturata (sintesi,
+// controlli dei numeri, rischi, cose da verificare, confronto col mercato,
+// fonti); "proposteCampi" = valori proposti per i campi della scheda, che lo
+// staff applica a mano scegliendo quali.
+model ClubAnalisiOperazione {
+  id             String   @id @default(cuid())
+  operazioneId   String
+  userId         String // id User del CRM che l'ha chiesta
+  chiamataId     String? // ClubChiamataAI
+  giudizio       String // solida | da-approfondire | critica
+  risultato      Json
+  proposteCampi  Json // [{ campo, valore, motivo, fonte }]
+  documentiLetti String[] // nomi dei file letti
+  documentiNon   String[] // nomi dei file non letti (troppo grandi o illeggibili)
+  applicateIl    DateTime? // ultima volta che sono state applicate proposte
+  createdAt      DateTime @default(now())
+
+  @@index([operazioneId, createdAt])
+}

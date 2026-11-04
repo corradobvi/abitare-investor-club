@@ -101,6 +101,15 @@ export async function caricaFile(chiave: string, f: FileVerificato): Promise<voi
   if (!r.ok) throw new Error(`Caricamento nell'archivio non riuscito (${await motivo(r)})`);
 }
 
+// Contenuto di un file, letto dal server (es. per farlo analizzare
+// all'agente AI). Chi chiama ha gia' controllato i permessi.
+export async function leggiFile(chiave: string): Promise<Uint8Array> {
+  const { client, base } = config();
+  const r = await client.fetch(urlOggetto(base, chiave), { method: "GET", cache: "no-store" });
+  if (!r.ok) throw new Error(`Lettura dall'archivio non riuscita (${await motivo(r)})`);
+  return new Uint8Array(await r.arrayBuffer());
+}
+
 // Elimina un file. Un file gia' assente non e' un errore.
 export async function eliminaFile(chiave: string): Promise<void> {
   const { client, base } = config();

@@ -458,7 +458,7 @@ model ClubPropostaTema {
 // fonti); "proposteCampi" = valori proposti per i campi della scheda, che lo
 // staff applica a mano scegliendo quali.
 model ClubAnalisiOperazione {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   operazioneId   String
   userId         String // id User del CRM che l'ha chiesta
   chiamataId     String? // ClubChiamataAI
@@ -468,7 +468,26 @@ model ClubAnalisiOperazione {
   documentiLetti String[] // nomi dei file letti
   documentiNon   String[] // nomi dei file non letti (troppo grandi o illeggibili)
   applicateIl    DateTime? // ultima volta che sono state applicate proposte
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   @@index([operazioneId, createdAt])
+}
+
+// Indicazioni permanenti date dall'Admin a un agente AI (src/lib/ai/
+// istruzioni.ts): l'agente le legge prima di ogni lavoro, dopo le sue regole
+// fisse (che restano piu' forti: prudenza, niente promesse, niente numeri
+// inventati). Nascono dalle Impostazioni (origine "manuale") o da un
+// risultato dell'agente ("da-risultato", con il riferimento).
+model ClubIstruzioneAgente {
+  id             String   @id @default(cuid())
+  agente         String // redattore | analista
+  testo          String
+  attiva         Boolean  @default(true)
+  origine        String   @default("manuale") // manuale | da-risultato
+  riferimento    Json? // es. { analisiId } o { propostaId }
+  creatoDaUserId String // id User del CRM
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([agente, attiva])
 }

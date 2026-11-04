@@ -8,6 +8,8 @@ import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 import { AVVERTENZA_CASE_STUDY_PREDEFINITA, MESSAGGIO_CONDIVISIONE_PREDEFINITO } from "@/lib/contenuti/testi";
 import CellulariReferenti from "./CellulariReferenti";
 import AgentiAi, { type LavoroMostrato } from "./AgentiAi";
+import IstruzioniAgenti from "./IstruzioniAgenti";
+import { istruzioniPerAgente } from "@/lib/ai/istruzioni";
 import { tettoSpesaAi } from "@/lib/impostazioni";
 import { agenteAttivo, chiaveAiPresente, NOMI_AGENTI, spesaAiDelMese, type Agente } from "@/lib/ai/motore";
 import { prisma } from "@/lib/prisma";
@@ -81,6 +83,12 @@ export default async function ImpostazioniPage() {
         tetto={tettoSpesaAi(imp)}
         spesaMese={await spesaAiDelMese()}
         lavori={await ultimiLavoriAi()}
+      />
+
+      <IstruzioniAgenti
+        agenti={await Promise.all(
+          (Object.keys(NOMI_AGENTI) as Agente[]).map(async (a) => ({ chiave: a, nome: NOMI_AGENTI[a], istruzioni: await istruzioniPerAgente(a) })),
+        )}
       />
 
       <section className="riquadro" style={{ marginTop: 20 }}>

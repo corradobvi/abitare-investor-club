@@ -15,6 +15,7 @@ import NuovoAggiornamento, { PulsanteEliminaAggiornamento } from "./NuovoAggiorn
 import CreaCaseStudy from "./CreaCaseStudy";
 import AnalistaAi from "./AnalistaAi";
 import { ultimeAnalisi } from "@/lib/ai/analista";
+import { puoIstruireAgenti } from "@/lib/ai/istruzioni";
 import { motivoNonDisponibile } from "@/lib/ai/motore";
 import { leggiImpostazioni } from "@/lib/impostazioni";
 import { utentiPerId } from "@/lib/crm/lettura";
@@ -617,6 +618,7 @@ export default async function SchedaOperazionePage({
               analisi={await ultimeAnalisi(utente, op.id)}
               puoApplicare={puoModificareOperazione(utente, op)}
               nonDisponibile={await motivoNonDisponibile("analista")}
+              puoIstruire={puoIstruireAgenti(utente.ruolo)}
             />
           ) : null}
 

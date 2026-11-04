@@ -3,7 +3,9 @@
 //
 // Prima di ogni lavoro: chiave ANTHROPIC_API_KEY presente, interruttore
 // dell'agente acceso (ClubImpostazione) e spesa del mese sotto il tetto
-// (tettoSpesaAiMensileEuro). Dopo: una riga ClubChiamataAI con consumi e costo
+// (tettoSpesaAiMensileEuro). L'agente riceve le sue regole fisse e poi le
+// indicazioni dello staff raccolte nel tempo (src/lib/ai/istruzioni.ts).
+// Dopo: una riga ClubChiamataAI con consumi e costo
 // (prezzi di listino, convertiti in euro al cambio BCE), anche se il lavoro
 // fallisce. Nel registro non finiscono mai i testi inviati o ricevuti.
 //
@@ -17,19 +19,16 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { leggiImpostazioni, tettoSpesaAi, type Impostazioni } from "@/lib/impostazioni";
 import { cambioDelGiorno } from "@/lib/cambi";
+import { NOMI_AGENTI, type Agente } from "@/lib/ai/agenti";
+import { testoIstruzioni } from "@/lib/ai/istruzioni";
+
+export { NOMI_AGENTI, type Agente };
 
 export const MODELLO_AI = "claude-opus-5-5";
-
-export type Agente = "redattore" | "analista";
 
 const INTERRUTTORI: Record<Agente, keyof Impostazioni> = {
   redattore: "agenteRedattoreAttivo",
   analista: "agenteAnalistaAttivo",
-};
-
-export const NOMI_AGENTI: Record<Agente, string> = {
-  redattore: "Redattore contenuti",
-  analista: "Analista operazioni",
 };
 
 // Prezzi di listino in dollari per milione di token (input, output, lettura
@@ -151,6 +150,13 @@ function client(): Anthropic {
 export async function eseguiLavoro(l: LavoroAgente): Promise<{ risultato: Record<string, unknown>; chiamataId: string }> {
   const motivo = await motivoNonDisponibile(l.agente);
   if (motivo) throw new ErroreAgente(motivo);
+  // Regole fisse dell'agente, poi le indicazioni dello staff raccolte nel
+  // tempo (src/lib/ai/istruzioni.ts), in un blocco a parte.
+  const indicazioni = await testoIstruzioni(l.agente);
+  const system: Anthropic.Beta.BetaTextBlockParam[] = [
+    { type: "text", text: l.system },
+    ...(indicazioni ? [{ type: "text" as const, text: indicazioni }] : []),
+  ];
 
   const inizio = Date.now();
   const consumi: Consumi = { modello: MODELLO_AI, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, ricercheWeb: 0 };
@@ -185,7 +191,7 @@ export async function eseguiLavoro(l: LavoroAgente): Promise<{ risultato: Record
           fallbacks: "default",
           output_config: { effort: l.effort },
           cache_control: { type: "ephemeral" },
-          system: l.system,
+          system,
           tools,
           messages,
         })

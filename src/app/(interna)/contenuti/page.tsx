@@ -5,6 +5,7 @@ import ElencoContenuti from "./ElencoContenuti";
 import RedattoreAi from "./RedattoreAi";
 import { proposteAperte } from "@/lib/ai/redattore";
 import { motivoNonDisponibile } from "@/lib/ai/motore";
+import { puoIstruireAgenti } from "@/lib/ai/istruzioni";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,11 @@ export default async function ContenutiPage() {
       </div>
       <div style={{ height: 20 }} />
       {puoScrivereContenuti(utente.ruolo) ? (
-        <RedattoreAi proposte={await proposteAperte()} nonDisponibile={await motivoNonDisponibile("redattore")} />
+        <RedattoreAi
+          proposte={await proposteAperte()}
+          nonDisponibile={await motivoNonDisponibile("redattore")}
+          puoIstruire={puoIstruireAgenti(utente.ruolo)}
+        />
       ) : null}
       <ElencoContenuti contenuti={contenuti} />
     </main>

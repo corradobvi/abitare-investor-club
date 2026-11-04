@@ -9,12 +9,14 @@ import { useState, useTransition } from "react";
 import { CAMPI_PROPONIBILI, GIUDIZI, type AnalisiMostrata } from "@/lib/ai/analisi-definizioni";
 import { dataOra } from "@/lib/date";
 import { analizza, applica } from "./azioni-analista";
+import InsegnaAgente from "../../InsegnaAgente";
 
 type Props = {
   operazioneId: string;
   analisi: AnalisiMostrata[]; // la piu' recente per prima
   puoApplicare: boolean;
   nonDisponibile: string | null;
+  puoIstruire: boolean; // Admin: "Insegna all'agente"
 };
 
 const ESITI: Record<string, { etichetta: string; classe: string }> = {
@@ -25,7 +27,7 @@ const ESITI: Record<string, { etichetta: string; classe: string }> = {
 
 const GRAVITA: Record<string, string> = { bassa: "badge", media: "badge allerta", alta: "badge spento" };
 
-export default function AnalistaAi({ operazioneId, analisi, puoApplicare, nonDisponibile }: Props) {
+export default function AnalistaAi({ operazioneId, analisi, puoApplicare, nonDisponibile, puoIstruire }: Props) {
   const router = useRouter();
   const [indice, setIndice] = useState(0);
   const [scelti, setScelti] = useState<string[]>([]);
@@ -226,6 +228,13 @@ export default function AnalistaAi({ operazioneId, analisi, puoApplicare, nonDis
             File letti: {a.documentiLetti.length ? a.documentiLetti.join(", ") : "nessuno"}.
             {a.documentiNon.length ? ` Non letti (troppo grandi o illeggibili): ${a.documentiNon.join(", ")}.` : ""}
           </p>
+          {puoIstruire ? (
+            <InsegnaAgente
+              agente="analista"
+              riferimento={{ analisiId: a.id, operazioneId }}
+              esempio="es. Nel confronto col mercato usa sempre anche le quotazioni OMI della zona; per le aste considera i tempi di liberazione dell'immobile."
+            />
+          ) : null}
         </div>
       ) : (
         <p className="tenue" style={{ fontSize: 13 }}>Nessuna analisi ancora.</p>

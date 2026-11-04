@@ -13,8 +13,9 @@ import { ARGOMENTI, LIVELLI } from "@/lib/contenuti/definizioni";
 import { etichetta } from "@/lib/operazioni/definizioni";
 import { data } from "@/lib/date";
 import { chiediProposte, scarta, scriviDaProposta, scriviDaTema } from "./azioni-redattore";
+import InsegnaAgente from "../InsegnaAgente";
 
-type Props = { proposte: PropostaMostrata[]; nonDisponibile: string | null };
+type Props = { proposte: PropostaMostrata[]; nonDisponibile: string | null; puoIstruire: boolean };
 
 const MOTIVI: Record<string, string> = {
   manca: "Manca nell'archivio",
@@ -22,7 +23,7 @@ const MOTIVI: Record<string, string> = {
   online: "Se ne parla online",
 };
 
-export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
+export default function RedattoreAi({ proposte, nonDisponibile, puoIstruire }: Props) {
   const router = useRouter();
   const [messaggio, setMessaggio] = useState<{ tipo: "ok" | "errore"; testo: string } | null>(null);
   const [lavoro, setLavoro] = useState<string | null>(null); // cosa sta facendo l'AI
@@ -208,6 +209,12 @@ export default function RedattoreAi({ proposte, nonDisponibile }: Props) {
           </button>
         </div>
       </div>
+      {puoIstruire ? (
+        <InsegnaAgente
+          agente="redattore"
+          esempio="es. Nelle news cita sempre la data della notizia nel primo paragrafo; nei contenuti di formazione inserisci un esempio con numeri riferito a Genova."
+        />
+      ) : null}
     </section>
   );
 }

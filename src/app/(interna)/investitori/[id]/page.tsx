@@ -24,6 +24,10 @@ import { massimoCapitale } from "@/lib/compatibilita";
 import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import SchedaProfilo from "./SchedaProfilo";
+import CopilotaCliente from "./CopilotaCliente";
+import { ultimiConsigli } from "@/lib/ai/copilota";
+import { motivoNonDisponibile } from "@/lib/ai/motore";
+import { puoIstruireAgenti } from "@/lib/ai/istruzioni";
 import { salvaDatiNuovo } from "./azioni";
 
 export const dynamic = "force-dynamic";
@@ -282,6 +286,13 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
       />
 
       {punteggio ? renderPunteggio(punteggio, investitore.prova) : null}
+
+      <CopilotaCliente
+        chiave={investitore.chiave}
+        consigli={await ultimiConsigli(utente, investitore.chiave)}
+        nonDisponibile={await motivoNonDisponibile("copilota")}
+        puoIstruire={puoIstruireAgenti(utente.ruolo)}
+      />
 
       <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22 }}>Interessi ({interessiVisibili.length})</h2>

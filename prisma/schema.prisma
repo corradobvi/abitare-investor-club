@@ -518,3 +518,21 @@ model ClubValutazione {
 
   @@index([createdAt])
 }
+
+// Consigli del copilota AI su un investitore (src/lib/ai/copilota.ts), solo
+// per lo staff che vede quel cliente. Esattamente uno tra clienteId e
+// contattoNuovoId. "risultato" = riassunto, prossima mossa, operazioni e
+// contenuti da proporre, domande per la telefonata e messaggi WhatsApp (con
+// segnaposto per i link, risolti al momento di mostrarli).
+model ClubConsiglioCopilota {
+  id              String   @id @default(cuid())
+  clienteId       String?
+  contattoNuovoId String?
+  userId          String // id User del CRM che l'ha chiesto
+  chiamataId      String?
+  risultato       Json
+  createdAt       DateTime @default(now())
+
+  @@index([clienteId, createdAt])
+  @@index([contattoNuovoId, createdAt])
+}

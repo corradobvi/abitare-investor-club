@@ -41,10 +41,11 @@ export const CHIAVI_IMPOSTAZIONI = [
   "testoAvvertenzaCaseStudy",
   // Messaggio WhatsApp per condividere un contenuto: {nome}, {titolo}, {link}.
   "messaggioCondivisioneContenutoWhatsApp",
-  // Agenti AI (src/lib/ai/): interruttori del redattore e dell'analista ("true" = acceso,
+  // Agenti AI (src/lib/ai/): interruttori di redattore, analista e copilota ("true" = acceso,
   // altrimenti spento) e tetto di spesa mensile in euro per tutti gli agenti.
   "agenteRedattoreAttivo",
   "agenteAnalistaAttivo",
+  "agenteCopilotaAttivo",
   "tettoSpesaAiMensileEuro",
 ] as const;
 
@@ -123,6 +124,7 @@ export const IMPOSTAZIONI_MODIFICABILI = [
   "messaggioCondivisioneContenutoWhatsApp",
   "agenteRedattoreAttivo",
   "agenteAnalistaAttivo",
+  "agenteCopilotaAttivo",
   "tettoSpesaAiMensileEuro",
 ] as const;
 

@@ -29,6 +29,7 @@ export const MODELLO_AI = "claude-opus-5-5";
 const INTERRUTTORI: Record<Agente, keyof Impostazioni> = {
   redattore: "agenteRedattoreAttivo",
   analista: "agenteAnalistaAttivo",
+  copilota: "agenteCopilotaAttivo",
 };
 
 // Prezzi di listino in dollari per milione di token (input, output, lettura

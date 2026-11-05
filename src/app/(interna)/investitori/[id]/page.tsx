@@ -25,6 +25,8 @@ import { AVVERTENZA_SIMULATORE_PREDEFINITA } from "@/lib/simulatore";
 import { TESTO_AVVERTENZA_PREDEFINITO } from "@/lib/messaggio-proposta";
 import SchedaProfilo from "./SchedaProfilo";
 import CopilotaCliente from "./CopilotaCliente";
+import ConversazioneAssistente from "./ConversazioneAssistente";
+import { conversazionePerStaff } from "@/lib/ai/assistente";
 import { ultimiConsigli } from "@/lib/ai/copilota";
 import { motivoNonDisponibile } from "@/lib/ai/motore";
 import { puoIstruireAgenti } from "@/lib/ai/istruzioni";
@@ -144,6 +146,7 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
   const scheda = await schedaPerUtente(utente, chiave);
   if (!scheda) notFound();
   const { investitore, referente, profilo, impostazioni } = scheda;
+  const conversazione = await conversazionePerStaff(utente, chiave);
   const [link, compatibili, disiscrizioni, interessi, sbloccate, operazioni, punteggi] = await Promise.all([
     invitoAttivo(investitore.rif),
     operazioniCompatibili(utente, rispostePerProfilo(profilo)),
@@ -293,6 +296,10 @@ export default async function SchedaInvestitorePage({ params }: { params: Promis
         nonDisponibile={await motivoNonDisponibile("copilota")}
         puoIstruire={puoIstruireAgenti(utente.ruolo)}
       />
+
+      {conversazione ? (
+        <ConversazioneAssistente messaggi={conversazione.messaggi} richieste={conversazione.richieste} puoIstruire={puoIstruireAgenti(utente.ruolo)} />
+      ) : null}
 
       <section className="riquadro" style={{ marginTop: 20 }}>
         <h2 className="titolo" style={{ fontSize: 22 }}>Interessi ({interessiVisibili.length})</h2>

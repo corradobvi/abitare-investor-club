@@ -3,7 +3,8 @@
 // telefono. "Le operazioni per te" (compatibili, per punteggio) con i propri
 // interessi; "Approfondimenti" (consigliati per il profilo, poi formazione,
 // case study e news); "Il mio profilo" con il riepilogo e la modifica delle
-// risposte (riapre la procedura guidata sulla domanda scelta).
+// risposte (riapre la procedura guidata sulla domanda scelta). "Chiedi": chat con
+// l'assistente AI (src/lib/ai/assistente.ts).
 // Con l'accesso limitato (iscritto dalla pagina pubblica, non ancora
 // confermato) al posto delle operazioni in corso ci sono i case study delle
 // operazioni concluse (src/lib/accesso-limitato.ts).
@@ -15,6 +16,8 @@ import { importoMostrato, statoInteresseMostrato } from "@/lib/operazioni/defini
 import { percentuale } from "@/lib/numeri";
 import { data } from "@/lib/date";
 import { renderFasciaAnteprima, renderMarchio } from "@/app/portale-ui";
+import type { ChatAssistente } from "@/lib/ai/assistente-definizioni";
+import ChatAssistenteRiquadro from "./ChatAssistente";
 
 export type RispostaRiepilogo = { chiave: string; domanda: string; risposta: string };
 
@@ -42,14 +45,16 @@ type Props = {
   vistaIniziale: Vista;
   fascia: string | null;
   limitato: boolean;
+  chat: ChatAssistente;
 };
 
-export type Vista = "operazioni" | "approfondimenti" | "profilo";
+export type Vista = "operazioni" | "approfondimenti" | "assistente" | "profilo";
 
 // Etichette per il cliente: la manifestazione "nuova" per lui e' "inviata".
 const SCHEDE: { valore: Vista; etichetta: string }[] = [
   { valore: "operazioni", etichetta: "Operazioni per te" },
   { valore: "approfondimenti", etichetta: "Approfondimenti" },
+  { valore: "assistente", etichetta: "Chiedi" },
   { valore: "profilo", etichetta: "Il mio profilo" },
 ];
 
@@ -63,7 +68,7 @@ const STATO_PER_CLIENTE: Record<string, string> = {
   ritirata: "Interesse ritirato",
 };
 
-export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, approfondimenti, novita, vistaIniziale, fascia, limitato }: Props) {
+export default function AreaCliente({ token, nome, referente, perTe, interessi, profilo, approfondimenti, novita, vistaIniziale, fascia, limitato, chat }: Props) {
   const [vista, setVista] = useState<Vista>(vistaIniziale);
   const base = `/c/${token}`;
 
@@ -297,7 +302,13 @@ export default function AreaCliente({ token, nome, referente, perTe, interessi, 
             </button>
           ))}
         </nav>
-        {vista === "operazioni" ? renderOperazioni() : vista === "approfondimenti" ? renderApprofondimenti() : renderProfilo()}
+        {vista === "operazioni"
+          ? renderOperazioni()
+          : vista === "approfondimenti"
+            ? renderApprofondimenti()
+            : vista === "assistente"
+              ? <ChatAssistenteRiquadro token={token} chat={chat} referente={{ nome: referente.nome, whatsapp: referente.whatsapp }} />
+              : renderProfilo()}
       </div>
     </main>
   );

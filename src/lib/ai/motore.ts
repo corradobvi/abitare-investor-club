@@ -30,6 +30,7 @@ const INTERRUTTORI: Record<Agente, keyof Impostazioni> = {
   redattore: "agenteRedattoreAttivo",
   analista: "agenteAnalistaAttivo",
   copilota: "agenteCopilotaAttivo",
+  assistente: "agenteAssistenteAttivo",
 };
 
 // Prezzi di listino in dollari per milione di token (input, output, lettura
@@ -133,6 +134,8 @@ export type LavoroAgente = {
   ricercheWebMassime: number; // 0 = niente ricerca web
   lettureWebMassime?: number; // pagine indicate dallo staff da leggere (web fetch); 0 o assente = nessuna
   allegati?: AllegatoAi[]; // file da leggere, prima del messaggio
+  // Conversazione precedente (es. chat dell'assistente), prima del messaggio.
+  storia?: { ruolo: "utente" | "agente"; testo: string }[];
   effort: "low" | "medium" | "high";
   dati?: Prisma.InputJsonObject;
 };
@@ -174,6 +177,7 @@ export async function eseguiLavoro(l: LavoroAgente): Promise<{ risultato: Record
   // richiesta: le fonti di ispirazione date dallo staff.
   if (l.lettureWebMassime) tools.push({ type: "web_fetch_20260209", name: "web_fetch", max_uses: l.lettureWebMassime, max_content_tokens: 20000 });
   const messages: Anthropic.Beta.BetaMessageParam[] = [
+    ...(l.storia ?? []).map((m): Anthropic.Beta.BetaMessageParam => ({ role: m.ruolo === "utente" ? "user" : "assistant", content: m.testo })),
     { role: "user", content: [...(l.allegati ?? []).map(bloccoAllegato), { type: "text", text: l.messaggio }] },
   ];
 

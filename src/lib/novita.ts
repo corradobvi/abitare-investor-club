@@ -2,7 +2,8 @@
 // clienti diventati caldi (14 giorni, prima di tutto; mai i contatti di
 // prova), manifestazioni d'interesse nuove, profili completati (14
 // giorni), registrazioni da confermare, aperture del link (7 giorni),
-// registrazioni doppione (14 giorni). I contatti di prova non contano: le
+// registrazioni doppione (14 giorni), richieste di contatto dall'assistente AI
+// del portale (14 giorni). I contatti di prova non contano: le
 // loro manifestazioni compaiono col segno PROVA ma fuori dal conteggio.
 import { prisma } from "@/lib/prisma";
 import type { RigaElenco } from "@/lib/investitori";
@@ -28,6 +29,7 @@ export type Novita = {
   daConfermare: VoceNovita[];
   aperture: VoceNovita[];
   doppioni: VoceNovita[];
+  richiesteContatto: VoceNovita[]; // dall'assistente AI del portale
 };
 
 const GIORNO = 24 * 60 * 60 * 1000;
@@ -86,6 +88,14 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[], r
     }),
   ]);
 
+  const richieste = rifs.length
+    ? await prisma.clubEvento.findMany({
+        where: { AND: [filtroPerRif(rifs), { tipo: "assistente-richiesta-contatto", creatoIl: { gte: da14 } }] },
+        orderBy: { creatoIl: "desc" },
+        take: MASSIMO_PER_VOCE,
+      })
+    : [];
+
   // Aperture: una voce per investitore, con l'ultima apertura e quante sono.
   const perInvestitore = new Map<string, { ultima: Date; volte: number }>();
   for (const e of aperture) {
@@ -138,6 +148,12 @@ export async function novitaPerUtente(utente: UtenteClub, righe: RigaElenco[], r
       nome: nomi.get(k) ?? "—",
       quando: dataOra(v.ultima),
       dettaglio: v.volte > 1 ? `${v.volte} aperture` : undefined,
+    })),
+    richiesteContatto: richieste.map((e) => ({
+      chiave: chiaveDiRiga(e),
+      nome: nomi.get(chiaveDiRiga(e)) ?? "—",
+      quando: dataOra(e.creatoIl),
+      dettaglio: testo(((e.dati ?? {}) as Record<string, unknown>).motivo) || undefined,
     })),
     doppioni: doppioniVisibili.slice(0, MASSIMO_PER_VOCE).map((e) => {
       const d = (e.dati ?? {}) as Record<string, unknown>;

@@ -30,6 +30,7 @@ const AZIONI: Record<string, string> = {
   "analizza-operazione": "Analisi operazione",
   "valuta-immobile": "Valutazione immobile",
   "consiglia-cliente": "Consiglio su un cliente",
+  "risposta-cliente": "Risposta a un cliente (portale)",
 };
 
 const euro = (n: number) => n.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });

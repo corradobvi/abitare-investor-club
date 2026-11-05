@@ -1,6 +1,6 @@
 "use server";
 // Azioni del portale del cliente (/c/<token>): procedura guidata,
-// manifestazione d'interesse, visite. Chiunque abbia il link puo' chiamarle:
+// manifestazione d'interesse, visite, assistente AI. Chiunque abbia il link puo' chiamarle:
 // ognuna ricontrolla il link e, per salvare, la modalita' (portale attivo,
 // oppure contatto di prova aperto dallo staff; in anteprima non si salva).
 import { apriInvito } from "@/lib/inviti";
@@ -27,6 +27,7 @@ import { prisma } from "@/lib/prisma";
 import { registraLetturaContenuto } from "@/lib/contenuti/dati";
 import { contenutoPrimaConferma } from "@/lib/accesso-limitato";
 import { aggiornamentoVisibileAlCliente, registraLetturaAggiornamento } from "@/lib/operazioni/aggiornamenti";
+import { registraRichiestaContatto, rispondiAlCliente, type EsitoDomanda } from "@/lib/ai/assistente";
 
 type Esito = { ok: true; completo: boolean } | { ok: false; errore: string };
 
@@ -152,4 +153,20 @@ export async function segnalaLetturaAggiornamento(token: unknown, aggiornamentoI
   const v = await operazioneDelCliente(ctx.investitore.rif, ctx.risposte, a.operazioneId);
   if (!v || !aggiornamentoVisibileAlCliente(a, v.op.livello)) return;
   await registraLetturaAggiornamento(ctx.investitore.rif, a);
+}
+
+// --- Assistente AI (src/lib/ai/assistente.ts) ---
+
+export async function inviaDomandaAssistente(token: unknown, domanda: unknown): Promise<EsitoDomanda> {
+  const ctx = await contestoLink(token);
+  if (!ctx) return { ok: false, errore: NON_DISPONIBILE };
+  return rispondiAlCliente(ctx, domanda);
+}
+
+// Pulsante "Chiedi di essere contattato": richiesta per il referente.
+export async function chiediContattoReferente(token: unknown): Promise<{ ok: boolean }> {
+  const ctx = await contestoPerSalvare(token);
+  if (!ctx) return { ok: false };
+  await registraRichiestaContatto(ctx, "Richiesta dal pulsante dell'assistente");
+  return { ok: true };
 }

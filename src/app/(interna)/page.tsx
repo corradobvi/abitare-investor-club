@@ -89,6 +89,7 @@ export default async function ElencoPage() {
   const gruppi = [
     renderGruppo("Clienti diventati caldi · ultimi 14 giorni", novita.caldi, true),
     renderGruppo("Manifestazioni d'interesse nuove", novita.manifestazioni, true),
+    renderGruppo("Chiedono di essere contattati (assistente) · ultimi 14 giorni", novita.richiesteContatto, true),
     renderGruppo("Da confermare", novita.daConfermare),
     renderGruppo("Profili completati · ultimi 14 giorni", novita.completati),
     renderGruppo("Link aperti · ultimi 7 giorni", novita.aperture),

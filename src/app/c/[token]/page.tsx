@@ -29,6 +29,7 @@ import PingApertura from "./PingApertura";
 import ProceduraGuidata from "./ProceduraGuidata";
 import AreaCliente, { type ReferenteCliente } from "./AreaCliente";
 import { approfondimentiPerCliente, novitaPerCliente } from "@/lib/contenuti/portale";
+import { chatPerCliente } from "@/lib/ai/assistente";
 
 export const dynamic = "force-dynamic";
 
@@ -74,10 +75,11 @@ export default async function LinkClientePage({
     );
   }
 
-  const [{ perTe, interessi }, utenti, approfondimenti] = await Promise.all([
+  const [{ perTe, interessi }, utenti, approfondimenti, chat] = await Promise.all([
     operazioniDelCliente(investitore.rif, risposte),
     utentiPerId(investitore.referenteUserId ? [investitore.referenteUserId] : []),
     approfondimentiPerCliente(risposte, investitore.limitato),
+    chatPerCliente(ctx),
   ]);
   // Ultima visita: l'apertura di questa pagina si registra dopo, dal browser.
   const novita = await novitaPerCliente(ctx.link.ultimoAccessoIl, [...perTe, ...interessi], approfondimenti.consigliati);
@@ -109,9 +111,10 @@ export default async function LinkClientePage({
           news: approfondimenti.news,
         }}
         novita={novita}
-        vistaIniziale={vista === "approfondimenti" || vista === "profilo" ? vista : "operazioni"}
+        vistaIniziale={vista === "approfondimenti" || vista === "profilo" || vista === "assistente" ? vista : "operazioni"}
         fascia={modalita === "anteprima" ? "Anteprima: niente viene salvato" : modalita === "prova" ? TESTO_FASCIA_PROVA : null}
         limitato={investitore.limitato}
+        chat={chat}
       />
     </>
   );

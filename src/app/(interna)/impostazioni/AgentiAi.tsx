@@ -24,7 +24,12 @@ type Props = {
   lavori: LavoroMostrato[];
 };
 
-const AZIONI: Record<string, string> = { "proponi-temi": "Proposte di temi", "scrivi-bozza": "Bozza", "analizza-operazione": "Analisi operazione" };
+const AZIONI: Record<string, string> = {
+  "proponi-temi": "Proposte di temi",
+  "scrivi-bozza": "Bozza",
+  "analizza-operazione": "Analisi operazione",
+  "valuta-immobile": "Valutazione immobile",
+};
 
 const euro = (n: number) => n.toLocaleString("it-IT", { style: "currency", currency: "EUR", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 

@@ -8,11 +8,16 @@ const VOCI = [
   { href: "/contenuti", etichetta: "Contenuti", attiva: (p: string) => p.startsWith("/contenuti") },
 ];
 
-export default function MenuPrincipale() {
+// Valutazioni (business plan di possibili operazioni): solo per chi puo'
+// creare operazioni.
+const VALUTAZIONI = { href: "/valutazioni", etichetta: "Valutazioni", attiva: (p: string) => p.startsWith("/valutazioni") };
+
+export default function MenuPrincipale({ valutazioni }: { valutazioni: boolean }) {
   const percorso = usePathname() ?? "/";
+  const voci = valutazioni ? [...VOCI.slice(0, 2), VALUTAZIONI, ...VOCI.slice(2)] : VOCI;
   return (
     <nav className="menu-principale" aria-label="Menu principale">
-      {VOCI.map((v) => (
+      {voci.map((v) => (
         <Link key={v.href} href={v.href} className={v.attiva(percorso) ? "attivo" : undefined}>
           {v.etichetta}
         </Link>

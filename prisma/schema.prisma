@@ -491,3 +491,30 @@ model ClubIstruzioneAgente {
 
   @@index([agente, attiva])
 }
+
+// Valutazione / business plan di una possibile operazione su un immobile
+// (src/lib/ai/valutatore.ts), solo per lo staff. "input" = dati inseriti
+// (InputValutazione); "ipotesi" = numeri usati nei conti (dati dello staff +
+// stime dell'analista, modificabili poi a mano); i conti si rifanno ogni
+// volta da qui (src/lib/valutazioni/calcoli.ts). "testi" = valutazione
+// interna e testi per il business plan del cliente.
+model ClubValutazione {
+  id                  String    @id @default(cuid())
+  titolo              String
+  strategia           String // buy-hold | fix-flip | short-rent | sviluppo | trading
+  input               Json
+  ipotesi             Json
+  fontiIpotesi        Json // [{ campo, spiegazione, fonte }]
+  comparabili         Json // [{ descrizione, mq, prezzo, fonte }]
+  testi               Json
+  fonti               Json // [{ titolo, url }]
+  documentiLetti      String[]
+  operazioneId        String? // operazione creata in bozza da questa valutazione
+  userId              String // id User del CRM che l'ha chiesta
+  chiamataId          String?
+  ipotesiModificateIl DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([createdAt])
+}

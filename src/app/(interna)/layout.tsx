@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { signOut } from "@/lib/auth";
-import { puoGestireImpostazioni, utenteConAccesso } from "@/lib/permessi";
+import { puoCreareOperazioni, puoGestireImpostazioni, utenteConAccesso } from "@/lib/permessi";
 import { ROLE_LABELS } from "@/lib/roles";
 import MenuPrincipale from "./MenuPrincipale";
 
@@ -10,7 +10,7 @@ export default async function AreaInternaLayout({ children }: { children: React.
   const utente = await utenteConAccesso();
   return (
     <>
-      <header style={{ background: "#fff", borderBottom: "1px solid var(--sand)" }}>
+      <header className="non-stampare" style={{ background: "#fff", borderBottom: "1px solid var(--sand)" }}>
         <div
           style={{
             maxWidth: 1240,
@@ -30,7 +30,7 @@ export default async function AreaInternaLayout({ children }: { children: React.
             </span>
             <span className="tenue" style={{ letterSpacing: 2, fontSize: 11 }}>INVESTOR CLUB</span>
           </Link>
-          <MenuPrincipale />
+          <MenuPrincipale valutazioni={puoCreareOperazioni(utente.ruolo)} />
           <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, flexWrap: "wrap" }}>
             {puoGestireImpostazioni(utente.ruolo) ? (
               <Link href="/impostazioni" style={{ textDecoration: "none", fontWeight: 600 }}>

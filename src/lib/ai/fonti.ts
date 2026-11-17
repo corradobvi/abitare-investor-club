@@ -24,3 +24,7 @@ export function linkIspirazione(testo: unknown): string[] {
 export const MASSIMO_FILE_ISPIRAZIONE = 3;
 export const BYTE_FILE_ISPIRAZIONE = 20 * 1024 * 1024; // in tutto (limite delle azioni server)
 export const ACCEPT_FILE_ISPIRAZIONE = "application/pdf,image/jpeg,image/png,image/webp";
+
+// Testo di riferimento incollato dallo staff (articoli, appunti): circa 10
+// pagine al massimo. Viaggia nel FormData dei file, campo "testo".
+export const MASSIMO_TESTO_ISPIRAZIONE = 40000;

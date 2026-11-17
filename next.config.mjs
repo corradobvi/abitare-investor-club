@@ -9,7 +9,9 @@ const nextConfig = {
   images: { unoptimized: true },
   // Caricamento di foto (fino a 10 MB) e documenti (fino a 20 MB) delle
   // operazioni con le azioni server: i limiti veri sono in src/lib/archivio.ts.
-  experimental: { serverActions: { bodySizeLimit: "21mb" } },
+  // Lo stesso limite vale per il controllo del login (middleware), che
+  // altrimenti taglia ogni richiesta oltre i 10 MB e l'azione fallisce.
+  experimental: { serverActions: { bodySizeLimit: "21mb" }, middlewareClientMaxBodySize: "21mb" },
   async headers() {
     return [
       {

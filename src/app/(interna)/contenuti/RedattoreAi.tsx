@@ -3,12 +3,12 @@
 // motivo e le fonti), "Scrivi la bozza" / "Scarta", e bozza su un tema scelto
 // dallo staff. Le bozze si aprono nell'editor: la pubblicazione resta allo
 // staff. I lavori durano da qualche decina di secondi a un paio di minuti.
-// Le fonti di ispirazione (link e file facoltativi) valgono per il lavoro
+// Le fonti di ispirazione (link, file e testo incollato, facoltativi) valgono per il lavoro
 // lanciato subito dopo.
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import type { PropostaMostrata } from "@/lib/ai/redattore";
-import { ACCEPT_FILE_ISPIRAZIONE, BYTE_FILE_ISPIRAZIONE, MASSIMO_FILE_ISPIRAZIONE, MASSIMO_FONTI_ISPIRAZIONE } from "@/lib/ai/fonti";
+import { ACCEPT_FILE_ISPIRAZIONE, BYTE_FILE_ISPIRAZIONE, MASSIMO_FILE_ISPIRAZIONE, MASSIMO_FONTI_ISPIRAZIONE, MASSIMO_TESTO_ISPIRAZIONE } from "@/lib/ai/fonti";
 import { ARGOMENTI, LIVELLI } from "@/lib/contenuti/definizioni";
 import { etichetta } from "@/lib/operazioni/definizioni";
 import { data } from "@/lib/date";
@@ -33,11 +33,13 @@ export default function RedattoreAi({ proposte, nonDisponibile, puoIstruire }: P
   const [livello, setLivello] = useState("base");
   const [fonti, setFonti] = useState("");
   const [file, setFile] = useState<File[]>([]);
+  const [testoRif, setTestoRif] = useState("");
   const [versioneFile, setVersioneFile] = useState(0); // per svuotare il campo file
 
   function formFile(): FormData {
     const fd = new FormData();
     for (const f of file) fd.append("file", f);
+    if (testoRif.trim()) fd.append("testo", testoRif);
     return fd;
   }
 
@@ -61,6 +63,7 @@ export default function RedattoreAi({ proposte, nonDisponibile, puoIstruire }: P
       if (!esito.ok) return setMessaggio({ tipo: "errore", testo: esito.errore });
       // Le fonti valevano per questo lavoro: si svuotano.
       setFonti("");
+      setTestoRif("");
       setFile([]);
       setVersioneFile((v) => v + 1);
       if (esito.id) return router.push(`/contenuti/${esito.id}/modifica`);
@@ -117,9 +120,27 @@ export default function RedattoreAi({ proposte, nonDisponibile, puoIstruire }: P
           onChange={(e) => scegliFile(Array.from(e.target.files ?? []))}
           style={{ fontSize: 13 }}
         />
+        <label className="etichetta" htmlFor="testo-ispirazione" style={{ marginTop: 8 }}>
+          …e/o incolla un testo di riferimento (articolo, appunti, email; circa 10 pagine al massimo)
+        </label>
+        <textarea
+          id="testo-ispirazione"
+          className="campo"
+          rows={4}
+          maxLength={MASSIMO_TESTO_ISPIRAZIONE}
+          value={testoRif}
+          onChange={(e) => setTestoRif(e.target.value)}
+          disabled={inCorso}
+          style={{ fontSize: 13 }}
+        />
+        {testoRif.length > MASSIMO_TESTO_ISPIRAZIONE * 0.9 ? (
+          <p className="tenue" style={{ fontSize: 12 }}>
+            {testoRif.length.toLocaleString("it-IT")} caratteri su {MASSIMO_TESTO_ISPIRAZIONE.toLocaleString("it-IT")}: oltre il testo non entra.
+          </p>
+        ) : null}
         <p className="tenue" style={{ fontSize: 12, marginTop: 4 }}>
           Valgono per il prossimo lavoro che lanci: proposte di temi o bozza. Il redattore le legge e ne prende spunto; i
-          link li cita tra le fonti. I file servono solo per quel lavoro e non vengono conservati.
+          link li cita tra le fonti. File e testo servono solo per quel lavoro e non vengono conservati.
         </p>
       </div>
 
